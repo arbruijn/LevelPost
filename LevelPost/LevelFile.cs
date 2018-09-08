@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 using System.Diagnostics;
 
@@ -127,8 +126,35 @@ namespace LevelPost
         public List<object[]> cmds;
     }
 
+    // A level file contains a set of commands to create/manipulate Unity objects
     static class LevelFile
     {
+        private static readonly Dictionary<VT, string[]> fieldNames = new Dictionary<VT, string[]>
+        {
+            { VT.CmdCreateAssetFile, new string[] { "path", "newFileId" } }, // does nothing
+            { VT.CmdAddAssetToAssetFile, new string[] { "fileId", "newAssetId", "type" }},
+            { VT.CmdInitializeGameManager, new string[] { "name", "newInitId" } },
+            { VT.CmdCreateGameObject, new string[] { "newObjId", "newTransId" } },
+            { VT.CmdTransformSetParent, new string[] { "transId", "parentTransId" } },
+            { VT.CmdGameObjectSetName, new string[] { "objId", "name" } },
+            { VT.CmdGameObjectSetTag, new string[] { "objId", "tag" } },
+            { VT.CmdGameObjectSetLayer, new string[] { "objId", "layer" } },
+            { VT.CmdGameObjectAddComponent, new string[] { "objId", "newCompId", "type" } },
+            { VT.CmdGameObjectSetComponentProperty, new string[] { "compId", "propName", "map", "array", "value" } },
+            { VT.CmdAssetRegisterMaterial, new string[] { "newMatId", "geomType", "name" } },
+            { VT.CmdFindPrefabReference, new string[] { "name", "newPrefabId" } },
+            { VT.CmdInstantiatePrefab, new string[] { "prefabId", "newObjId", "newTransId" } },
+            { VT.CmdGetComponentAtRuntime, new string[] { "alsoChild", "name", "objId", "newCompId" } },
+            { VT.CmdSaveAsset, new string[] { "id", "value" } },
+            { VT.CmdLoadAssetBundle, new string[] { "dir", "file", "newBundleId" } },
+            { VT.CmdLoadAssetFromAssetBundle, new string[] { "name", "bundleId", "newObjId" } },
+            { VT.CmdCreateMaterial, new string[] { "newMatId", "shaderId", "gpuInst", "texId", "texOfs", "texScale", "queue", "kws", "name" } },
+            { VT.CmdMaterialSetTexture, new string[] { "matId", "propName", "texId" } },
+            { VT.CmdMaterialSetColor, new string[] { "matId", "propName", "color" } },
+            { VT.CmdCreateTexture2D, new string[] { "newTexId", "width", "height", "fmt", "mipmap", "filter", "name", "pixels" } },
+            { VT.CmdDone, new string[] {} }
+        };
+
         private static readonly Dictionary<VT, VT[]> objTypes = new Dictionary<VT, VT[]>
         {
             { VT.SegmentLightInfo, new VT[] { VT.SegmentLightType, VT.Int, VT.Guid } },
@@ -628,11 +654,23 @@ namespace LevelPost
                 WriteBytes(s, BitConverter.GetBytes(a[i]));
         }
 
-        static string FmtCmd(object[] cmd)
+        public static string FmtCmd(object[] cmd)
         {
-            string s = String.Format("Cmd {0} [", cmd[0]);
-            for (int l = cmd.Length, i = 1; i < l; i++)
-                s += String.Format(i + 1 == l ? "{0}]" : "{0}, ", cmd[i]);
+            if ((VT)cmd[0] == VT.CmdDone) // otherwise CmdFlag
+                return "CmdDone";
+            string s = String.Format("{0} ", cmd[0]);
+            LevelFile.fieldNames.TryGetValue((VT)cmd[0], out string[] fieldNames);
+            for (int l = cmd.Length, i = 1; i < l; i++) {
+                if (fieldNames != null)
+                    s += fieldNames[i - 1] + ":";
+                object v = cmd[i];
+                if (v is object[] va) {
+                    v = va[0];
+                    if (v is VT vt && vt == VT.Enum)
+                        v = String.Format("({1}){0}", va[1], va[2]);
+                }
+                s += String.Format(i + 1 == l ? "{0}" : "{0}, ", v);
+            }
             return s;
         }
 
@@ -653,13 +691,16 @@ namespace LevelPost
 
         public static void WriteLevel(string filename, Level level)
         {
-            using (FileStream s = new FileStream(filename, FileMode.Create, FileAccess.Write))
+            var tmpFilename = filename + ".tmp";
+            using (FileStream s = new FileStream(tmpFilename, FileMode.Create, FileAccess.Write))
             {
                 WriteInt32(s, 0x52657631);
                 WriteInt32(s, level.version);
                 WriteInt32(s, 1);
                 new CmdStream(s, level.version).WriteAll(level.cmds);
             }
+            File.Delete(filename);
+            File.Move(tmpFilename, filename);
         }
     }
 }

@@ -66,6 +66,7 @@ namespace LevelPost
                     LvlFile.Text = (string)key.GetValue("LvlFile");
                     EditorDir.Text = (string)key.GetValue("EditorDir");
                     AutoConvert.IsChecked = (int)key.GetValue("AutoConvert", 1) != 0;
+                    DebugOptions.IsChecked = (int)key.GetValue("DebugOptions", 0) != 0;
                     for (int i = 1; i <= texDirCount; i++)
                         ((TextBox)this.FindName("TexDir" + i.ToString())).Text = (string)key.GetValue("TexDir" + i.ToString());
                 }
@@ -74,16 +75,16 @@ namespace LevelPost
             using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
             using (var key = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 448850"))
             {
-                string editorDir = (string)key.GetValue("InstallLocation") + @"\OverloadLevelEditor";
-                if (EditorDir.Text.Equals("") && Directory.Exists(editorDir))
-                    EditorDir.Text = editorDir;
-                //string texDir2 = (string)key.GetValue("InstallLocation") + @"\OverloadLevelEditor\DecalTextures";
-                //if (TexDir2.Text.Equals("") && Directory.Exists(texDir2))
-                //    TexDir2.Text = texDir2;
+                if (key != null)
+                {
+                    string editorDir = (string)key.GetValue("InstallLocation") + @"\OverloadLevelEditor";
+                    if (EditorDir.Text.Equals("") && Directory.Exists(editorDir))
+                        EditorDir.Text = editorDir;
+                }
             }
 
-            UpdateWatcher();
             updating = false;
+            UpdateAll();
 
             AddMessage("Ready.");
         }
@@ -95,15 +96,13 @@ namespace LevelPost
             updating = true;
             UpdateWatcher();
             UpdateSettings();
+            DumpBtn.Visibility = DebugOptions.IsChecked == true ? Visibility.Visible : Visibility.Hidden;
             updating = false;
         }
 
         private void AddMessage(string msg)
         {
-            //Messages.Text += 
-            //
-            //Application.Current.MainWindow.Dispatcher.BeginInvoke(new Action(() =>
-            this.Dispatcher.Invoke(() =>
+            Dispatcher.Invoke(() =>
             {
                 if (msg == null)
                     Messages.AppendText("\n");
@@ -175,19 +174,31 @@ namespace LevelPost
         private void Convert(string filename, ConvertSettings settings)
         {
             converting = true;
-            var stats = LevelConvert.Convert(filename, settings, (cmsg) => AddMessage(cmsg));
-            var msg = "Converted " + filename + " changed " + stats.convertedTextures + " of " + stats.totalTextures + " textures";
-            var emsg = new List<string>();
-            if (stats.builtInTextures != 0)
-                emsg.Add(stats.builtInTextures + " built-in");
-            if (stats.missingTextures != 0)
-                emsg.Add(stats.missingTextures + " missing");
-            if (stats.alreadyTextures != 0)
-                emsg.Add(stats.alreadyTextures + " already converted");
-            if (emsg.Count != 0)
-                msg += " (" + String.Join(", ", emsg.ToArray()) + ")";
-            AddMessage(msg);
-            converting = false;
+            this.Dispatcher.Invoke(() => ConvertBtn.IsEnabled = false);
+            try
+            {
+                var stats = LevelConvert.Convert(filename, settings, (cmsg) => AddMessage(cmsg));
+                var msg = "Converted " + filename + " changed " + stats.convertedTextures + " of " + stats.totalTextures + " textures";
+                var emsg = new List<string>();
+                if (stats.builtInTextures != 0)
+                    emsg.Add(stats.builtInTextures + " built-in");
+                if (stats.missingTextures != 0)
+                    emsg.Add(stats.missingTextures + " missing");
+                if (stats.alreadyTextures != 0)
+                    emsg.Add(stats.alreadyTextures + " already converted");
+                if (emsg.Count != 0)
+                    msg += " (" + String.Join(", ", emsg.ToArray()) + ")";
+                AddMessage(msg);
+            }
+            catch (Exception ex)
+            {
+                AddMessage("Convert failed: " + ex.Message);
+            }
+            finally
+            {
+                converting = false;
+                this.Dispatcher.Invoke(() => ConvertBtn.IsEnabled = true);
+            }
         }
 
         private void ConvertCurrent(bool isAuto)
@@ -237,14 +248,20 @@ namespace LevelPost
             }
 
             ConvertSettings settings = new ConvertSettings() { texDirs = dirs, ignoreTexDirs = ignoreDirs };
-            Task convert = new Task(() => Convert(filename, settings));
-            convert.Start();
+            new Task(() => Convert(filename, settings)).Start();
         }
 
         private void ConvertBtn_Click(object sender, RoutedEventArgs e)
         {
-            UpdateAll();
-            ConvertCurrent(false);
+            try
+            {
+                UpdateAll();
+                ConvertCurrent(false);
+            }
+            catch (Exception ex)
+            {
+                AddMessage("Convert failed: " + ex.Message);
+            }
         }
 
         private void UpdateSettings()
@@ -253,6 +270,7 @@ namespace LevelPost
             key.SetValue("LvlFile", LvlFile.Text);
             key.SetValue("AutoConvert", AutoConvert.IsChecked == true ? 1 : 0);
             key.SetValue("EditorDir", EditorDir.Text);
+            key.SetValue("DebugOptions", DebugOptions.IsChecked == true ? 1 : 0);
 
             for (int i = 1; i <= texDirCount; i++)
                 key.SetValue("TexDir" + i.ToString(), ((TextBox)this.FindName("TexDir" + i.ToString())).Text);
@@ -264,7 +282,7 @@ namespace LevelPost
         {
             if (converting)
                 return;
-            this.Dispatcher.Invoke(() =>
+            Dispatcher.Invoke(() =>
             {
                 if (!e.FullPath.Equals(LvlFile.Text, StringComparison.InvariantCultureIgnoreCase))
                     return;
@@ -280,7 +298,7 @@ namespace LevelPost
 
         private void OnChangedTimer(Object source, ElapsedEventArgs e)
         {
-            this.Dispatcher.Invoke(() =>
+            Dispatcher.Invoke(() =>
             {
                 //AddMessage("timer");
                 ConvertCurrent(true);
@@ -308,6 +326,44 @@ namespace LevelPost
         {
             if (e.Key.Equals(Key.Space) || e.Key.Equals(Key.Return))
                 AboutLinkClick(sender, null);
+        }
+
+        private void DumpBtn_Click(object sender, RoutedEventArgs e)
+        {
+            string filename = LvlFile.Text;
+            DumpBtn.IsEnabled = false;
+            new Task(() => {
+                var lines = new List<string>();
+                AddMessage(null);
+                AddMessage("Dumping " + filename);
+                try
+                {
+                    foreach (var cmd in LevelFile.ReadLevel(filename).cmds)
+                        lines.Add(LevelFile.FmtCmd(cmd));
+                }
+                catch (Exception ex)
+                {
+                    AddMessage("Dump failed: " + ex.Message);
+                    Dispatcher.Invoke(() => { DumpBtn.IsEnabled = true; });
+                    return;
+                }
+                string text = String.Join("\n", lines);
+                lines = null;
+                Dispatcher.Invoke(() =>
+                {
+                    var win = new DumpWindow();
+                    win.Text.Text = text;
+                    win.Show();
+                    win.Text.Focus();
+                    DumpBtn.IsEnabled = true;
+                    AddMessage("Dump done");
+                });
+            }).Start();
+        }
+
+        private void DebugOptions_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateAll();
         }
     }
 }

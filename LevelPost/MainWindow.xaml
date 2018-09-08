@@ -21,6 +21,7 @@
                     <Label Content="Messages" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,116,0,0" Grid.ColumnSpan="2" Width="100" Height="26" Padding="0,5,5,5"/>
                     <Button x:Name="ConvertBtn" Grid.ColumnSpan="2" Content="Convert" HorizontalAlignment="Left" Margin="11,62,0,0" VerticalAlignment="Top" Width="75" Click="ConvertBtn_Click" RenderTransformOrigin="0.493,2.3" TabIndex="7"/>
                     <CheckBox x:Name="AutoConvert" Content="Auto convert on change" Grid.Column="1" HorizontalAlignment="Left" Margin="76,41,0,0" VerticalAlignment="Top" Width="576" IsChecked="True" Click="AutoConvert_Click" TabIndex="6"/>
+                    <Button x:Name="DumpBtn" Content="Dump" HorizontalAlignment="Left" Margin="37,62,0,0" VerticalAlignment="Top" Width="75" Click="DumpBtn_Click" RenderTransformOrigin="0.493,2.3" TabIndex="7" Grid.Column="1" ToolTip="Dump level structure to new window"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Settings" TabIndex="2">
@@ -37,6 +38,7 @@
                         <TextBox x:Name="TexDir1" HorizontalAlignment="Left" Height="23" Margin="132,35,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="571" TextChanged="TextChanged" TabIndex="10"/>
                         <Label Content="Extra texture directory" HorizontalAlignment="Left" Margin="1,32,0,0" VerticalAlignment="Top" Width="126" Padding="0,5,5,5"/>
                         <Button x:Name="TexDirBtn1" Content="Select" HorizontalAlignment="Left" Height="22" Margin="708,36,0,0" VerticalAlignment="Top" Width="50" Click="DirButton_Click" TabIndex="11"/>
+                        <CheckBox x:Name="DebugOptions" Content="Enable debug options" HorizontalAlignment="Left" Margin="132,71,0,0" VerticalAlignment="Top" RenderTransformOrigin="-0.282,-0.333" Click="DebugOptions_Click"/>
                     </Grid>
                 </Grid>
             </TabItem>
@@ -46,7 +48,7 @@
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
                     <Image HorizontalAlignment="Left" Height="100" Margin="10,10,50,0" VerticalAlignment="Top" Width="100" Source="icon128.png"/>
-                    <Label x:Name="LblVersion" Content="LevelPost 2018.08.19" HorizontalAlignment="Left" Margin="115,10,0,0" VerticalAlignment="Top" Width="182"/>
+                    <Label x:Name="LblVersion" Content="LevelPost 2018.09.08" HorizontalAlignment="Left" Margin="115,10,0,0" VerticalAlignment="Top" Width="182"/>
                     <Label Content="Arne de Bruijn" HorizontalAlignment="Left" Margin="115,62,0,0" VerticalAlignment="Top"/>
                     <Label x:Name="AboutLink" Content="https://www.arnedebruijn.nl/levelpost" HorizontalAlignment="Left" Margin="115,88,0,0" VerticalAlignment="Top" Cursor="Hand" Foreground="#FF0000EE" MouseUp="AboutLinkClick" TabIndex="12" IsTabStop="True" Focusable="True" KeyDown="AboutLink_KeyDown"/>
                     <Label Content="This is an unrelated, unsupported tool. Use at your own risk!" HorizontalAlignment="Left" Margin="115,114,0,0" VerticalAlignment="Top" Width="502"/>
