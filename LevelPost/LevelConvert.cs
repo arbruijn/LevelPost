@@ -29,6 +29,7 @@ namespace LevelPost
         public string bundleDir;
         public string bundleName;
         public string bundlePrefix;
+        public int texPointPx;
     }
 
     interface ILevelMod
@@ -81,7 +82,7 @@ namespace LevelPost
         }
 
         // Return bitmap pixels in ABGR format, top->bottom order
-        private static byte[] GetBitmapData(Bitmap bmp)
+        private static byte[] GetBitmapData(Bitmap bmp, out bool hasAlpha)
         {
             var bData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
             // bData.Stride is positive for bottom->top source data
@@ -91,6 +92,7 @@ namespace LevelPost
             System.Runtime.InteropServices.Marshal.Copy(bData.Scan0, srcData, 0, srcData.Length);
             bmp.UnlockBits(bData);
             int srcIdx = stride < 0 ? -stride * (height - 1) : 0, dstIdx = 0;
+            bool hasAlphaInt = false;
             for (int h = 0; h < height; h++)
             {
                 for (int w = 0; w < width; w++)
@@ -98,12 +100,15 @@ namespace LevelPost
                     dstData[dstIdx + 0] = srcData[srcIdx + 2];
                     dstData[dstIdx + 1] = srcData[srcIdx + 1];
                     dstData[dstIdx + 2] = srcData[srcIdx + 0];
-                    dstData[dstIdx + 3] = srcData[srcIdx + 3];
+                    var a = dstData[dstIdx + 3] = srcData[srcIdx + 3];
+                    if (a != 255 && !hasAlphaInt)
+                        hasAlphaInt = true;
                     srcIdx += 4;
                     dstIdx += 4;
                 }
                 srcIdx -= width * 4 - stride;
             }
+            hasAlpha = hasAlphaInt;
             return dstData;
         }
 
@@ -156,11 +161,16 @@ namespace LevelPost
                     return false;
                 }
 
-                var texData = GetBitmapData(bmp);
+                bool hasAlpha;
+                var texData = GetBitmapData(bmp, out hasAlpha);
+                bool blocky = bmp.Width <= settings.texPointPx;
 
                 var texGuid = Guid.NewGuid();
-                newCmds.Add(new object[] { VT.CmdCreateTexture2D, texGuid, bmp.Width, bmp.Height, "ARGB32", false, "Bilinear", texName,
-                                    texData });
+                newCmds.Add(new object[] { VT.CmdCreateTexture2D, texGuid, bmp.Width, bmp.Height,
+                    hasAlpha ? "ARGB32" : "RGB24",
+                    false,
+                    blocky ? "Point" : "Bilinear",
+                    texName, texData });
 
                 /*
                 // Load shader from asset bundle if not yet loaded
@@ -190,7 +200,12 @@ namespace LevelPost
                 newCmds.Add(new object[] { VT.CmdMaterialSetColor, matGuid, "_Color", color });
 
                 stats.convertedTextures++;
-                log("Converted texture " + texName);
+                var msgOpts = new List<string>();
+                if (blocky)
+                    msgOpts.Add("blocky");
+                //if (hasAlpha)
+                //    msgOpts.Add("alpha");
+                log("Converted texture " + texName + (msgOpts.Count != 0 ? " (" + String.Join(", ", msgOpts) + ")" : ""));
                 return true;
             }
             return false;

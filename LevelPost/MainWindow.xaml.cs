@@ -73,6 +73,13 @@ namespace LevelPost
                     DebugOptions.IsChecked = (int)key.GetValue("DebugOptions", 0) != 0;
                     for (int i = 1; i <= texDirCount; i++)
                         ((TextBox)this.FindName("TexDir" + i.ToString())).Text = (string)key.GetValue("TexDir" + i.ToString());
+
+                    TexPointPx.Text = (string)key.GetValue("TexPointPx", "64");
+                }
+                else
+                {
+                    AutoConvert.IsChecked = true;
+                    TexPointPx.Text = "64";
                 }
             }
 
@@ -254,7 +261,14 @@ namespace LevelPost
                 }
             }
 
-            ConvertSettings settings = new ConvertSettings() { texDirs = dirs, ignoreTexDirs = ignoreDirs };
+            int texPointPx = 0;
+            Int32.TryParse(TexPointPx.Text, out texPointPx);
+
+            ConvertSettings settings = new ConvertSettings() {
+                texDirs = dirs,
+                ignoreTexDirs = ignoreDirs,
+                texPointPx = texPointPx
+            };
 
             if (!BunPrefix.Text.Equals(""))
             {
@@ -291,6 +305,8 @@ namespace LevelPost
             key.SetValue("AutoConvert", AutoConvert.IsChecked == true ? 1 : 0);
             key.SetValue("EditorDir", EditorDir.Text);
             key.SetValue("DebugOptions", DebugOptions.IsChecked == true ? 1 : 0);
+
+            key.SetValue("TexPointPx", TexPointPx.Text);
 
             for (int i = 1; i <= texDirCount; i++)
                 key.SetValue("TexDir" + i.ToString(), ((TextBox)this.FindName("TexDir" + i.ToString())).Text);
@@ -384,6 +400,11 @@ namespace LevelPost
         private void DebugOptions_Click(object sender, RoutedEventArgs e)
         {
             UpdateAll();
+        }
+
+        private void TexPointPx_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = e.Text.CompareTo("0") >= 0 && e.Text.CompareTo("9") <= 0;
         }
     }
 }

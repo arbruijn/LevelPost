@@ -52,6 +52,9 @@
                         <Label Content="Extra texture directory" HorizontalAlignment="Left" Margin="1,32,0,0" VerticalAlignment="Top" Width="126" Padding="0,5,5,5"/>
                         <Button x:Name="TexDirBtn1" Content="Select" HorizontalAlignment="Left" Height="22" Margin="708,36,0,0" VerticalAlignment="Top" Width="50" Click="DirButton_Click" TabIndex="11"/>
                         <CheckBox x:Name="DebugOptions" Content="Enable debug options" HorizontalAlignment="Left" Margin="132,71,0,0" VerticalAlignment="Top" RenderTransformOrigin="-0.282,-0.333" Click="DebugOptions_Click"/>
+                        <Label Content="Blocky textures if" HorizontalAlignment="Left" Margin="1,99,0,0" VerticalAlignment="Top" Width="126" Padding="0,5,5,5"/>
+                        <TextBox x:Name="TexPointPx" HorizontalAlignment="Left" Height="23" Margin="132,102,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="35" TextChanged="TextChanged" TabIndex="10" PreviewTextInput="TexPointPx_PreviewTextInput"/>
+                        <Label Content="pixels or lower (0=off)" HorizontalAlignment="Left" Margin="172,99,0,0" VerticalAlignment="Top" Width="126" Padding="0,5,5,5" RenderTransformOrigin="1.833,0.615"/>
                     </Grid>
                 </Grid>
             </TabItem>
@@ -61,7 +64,7 @@
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
                     <Image HorizontalAlignment="Left" Height="100" Margin="10,10,50,0" VerticalAlignment="Top" Width="100" Source="icon128.png"/>
-                    <Label x:Name="LblVersion" Content="LevelPost 2018.09.08" HorizontalAlignment="Left" Margin="115,10,0,0" VerticalAlignment="Top" Width="182"/>
+                    <Label x:Name="LblVersion" Content="LevelPost 2018.12.01" HorizontalAlignment="Left" Margin="115,10,0,0" VerticalAlignment="Top" Width="182"/>
                     <Label Content="Arne de Bruijn" HorizontalAlignment="Left" Margin="115,62,0,0" VerticalAlignment="Top"/>
                     <Label x:Name="AboutLink" Content="https://www.arnedebruijn.nl/levelpost" HorizontalAlignment="Left" Margin="115,88,0,0" VerticalAlignment="Top" Cursor="Hand" Foreground="#FF0000EE" MouseUp="AboutLinkClick" TabIndex="12" IsTabStop="True" Focusable="True" KeyDown="AboutLink_KeyDown"/>
                     <Label Content="This is an unrelated, unsupported tool. Use at your own risk!" HorizontalAlignment="Left" Margin="115,114,0,0" VerticalAlignment="Top" Width="502"/>
