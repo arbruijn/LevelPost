@@ -666,8 +666,15 @@ namespace LevelPost
                 object v = cmd[i];
                 if (v is object[] va) {
                     v = va[0];
-                    if (v is VT vt && vt == VT.Enum)
-                        v = String.Format("({1}){0}", va[1], va[2]);
+                    if (v is VT vt)
+                        if (vt == VT.Enum)
+                            v = String.Format("({1}){0}", va[1], va[2]);
+                        else if (vt == VT.Vector3 || vt == VT.Vector3b)
+                            v = String.Format("[{0}, {1}, {2}]", va[1], va[2], va[3]);
+                        else if (vt == VT.Quaternion)
+                            v = String.Format("[{0}, {1}, {2}, {3}]", va[1], va[2], va[3], va[4]);
+                } else if (v is Vector3 v3) {
+                    v = String.Format("[{0}, {1}, {2}]", v3.x, v3.y, v3.z);
                 }
                 s += String.Format(i + 1 == l ? "{0}" : "{0}, ", v);
             }

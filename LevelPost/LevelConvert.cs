@@ -26,6 +26,9 @@ namespace LevelPost
         public bool verbose;
         public List<string> texDirs;
         public List<string> ignoreTexDirs;
+        public string bundleDir;
+        public string bundleName;
+        public string bundlePrefix;
     }
 
     interface ILevelMod
@@ -156,7 +159,7 @@ namespace LevelPost
                 var texData = GetBitmapData(bmp);
 
                 var texGuid = Guid.NewGuid();
-                newCmds.Add(new object[] { VT.CmdCreateTexture2D, texGuid, bmp.Width, bmp.Height, "RGB24", false, "Bilinear", texName,
+                newCmds.Add(new object[] { VT.CmdCreateTexture2D, texGuid, bmp.Width, bmp.Height, "ARGB32", false, "Bilinear", texName,
                                     texData });
 
                 /*
@@ -201,7 +204,58 @@ namespace LevelPost
         }
     }
 
-    #if TWEAKS
+    class BunTexMod : ILevelMod
+    {
+        private ConvertSettings settings;
+        private Action<string> log;
+        private ConvertStats stats;
+        private Guid bundle;
+
+        public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats)
+        {
+            this.settings = settings;
+            this.log = log;
+            this.stats = stats;
+            return true;
+        }
+
+        public bool HandleCommand(object[] cmd, List<object[]> newCmds)
+        {
+            if ((VT)cmd[0] == VT.CmdLoadAssetFromAssetBundle && ((string)cmd[1]).EndsWith(".mat"))
+                stats.alreadyTextures++;
+            if ((VT)cmd[0] == VT.CmdAssetRegisterMaterial)
+            {
+                //stats.totalTextures++;
+                var matGuid = (Guid)cmd[1];
+                string texName = (string)cmd[3];
+
+                if (texName.StartsWith(settings.bundlePrefix))
+                {
+                    // Load material from asset bundle
+                    if (bundle == Guid.Empty) {
+                        bundle = Guid.NewGuid();
+                        newCmds.Add(new object[]{VT.CmdLoadAssetBundle, settings.bundleDir, settings.bundleName, bundle});
+                    }
+                    newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, cmd[3] + ".mat", bundle, matGuid});
+
+                    stats.convertedTextures++;
+                    log("Converted bundle texture " + texName);
+                    return true;
+                }
+            }
+            return false;
+        }
+        public bool IsChanged()
+        {
+            return stats.convertedTextures != 0;
+        }
+        public void Finish(List<object[]> ncmds)
+        {
+        }
+    }
+
+
+#if TWEAKS
     class EntityTweaker : ILevelMod
     {
         private Action<string> log;
@@ -305,7 +359,7 @@ namespace LevelPost
             }
         }
     }
-    #endif
+#endif
 
     class LevelConvert
     {
@@ -314,11 +368,15 @@ namespace LevelPost
             var stats = new ConvertStats();
 
             var mods = new List<ILevelMod>();
+
+            if (settings.bundlePrefix != null)
+                mods.Add(new BunTexMod());
+
             mods.Add(new TexMod());
             #if TWEAKS
             mods.Add(new EntityTweaker());
             #endif
-            
+
             foreach (var mod in mods)
                 if (!mod.Init(levelFilename, settings, log, stats))
                     return stats;

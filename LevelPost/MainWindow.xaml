@@ -24,7 +24,20 @@
                     <Button x:Name="DumpBtn" Content="Dump" HorizontalAlignment="Left" Margin="37,62,0,0" VerticalAlignment="Top" Width="75" Click="DumpBtn_Click" RenderTransformOrigin="0.493,2.3" TabIndex="7" Grid.Column="1" ToolTip="Dump level structure to new window"/>
                 </Grid>
             </TabItem>
-            <TabItem Header="Settings" TabIndex="2">
+            <TabItem Header="Bundle" TabIndex="2">
+                <Grid Background="#FFE5E5E5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="62*"/>
+                        <ColumnDefinition Width="683*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="BunFile" HorizontalAlignment="Left" Height="23" Margin="76,13,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="TextChanged" TabIndex="4"/>
+                    <Label Content="Bundle file" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
+                    <Button x:Name="BunFileBtn" Content="Select" HorizontalAlignment="Left" Height="22" Margin="654,14,0,0" VerticalAlignment="Top" Width="48" Click="FileButton_Click" Grid.Column="1" TabIndex="5"/>
+                    <TextBox x:Name="BunPrefix" HorizontalAlignment="Left" Height="23" Margin="76,44,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="TextChanged" TabIndex="4"/>
+                    <Label Content="Bundle prefix" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Settings" TabIndex="3">
                 <Grid Background="#FFE5E5E5">
                     <Grid HorizontalAlignment="Left" Height="360" Margin="10,10,0,0" VerticalAlignment="Top" Width="760">
                         <Label Content="Rescale" HorizontalAlignment="Left" Margin="0,104,0,0" VerticalAlignment="Top" Width="103" Padding="0,5,5,5" Visibility="Hidden"/>

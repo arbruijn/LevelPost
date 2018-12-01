@@ -64,6 +64,10 @@ namespace LevelPost
                 if (key != null)
                 {
                     LvlFile.Text = (string)key.GetValue("LvlFile");
+
+                    BunFile.Text = (string)key.GetValue("BunFile");
+                    BunPrefix.Text = (string)key.GetValue("BunPrefix");
+
                     EditorDir.Text = (string)key.GetValue("EditorDir");
                     AutoConvert.IsChecked = (int)key.GetValue("AutoConvert", 1) != 0;
                     DebugOptions.IsChecked = (int)key.GetValue("DebugOptions", 0) != 0;
@@ -115,9 +119,12 @@ namespace LevelPost
 
         private void FileButton_Click(object sender, RoutedEventArgs e)
         {
-			OpenFileDialog openFileDialog = new OpenFileDialog();
-            if (LvlFile.Text.Length != 0) {
-                var info = new DirectoryInfo(LvlFile.Text);
+            string btnName = ((Button)sender).Name;
+            TextBox textBox = (TextBox)this.FindName(btnName.Substring(0, btnName.Length - 3)); // strip Btn
+
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            if (textBox.Text.Length != 0) {
+                var info = new DirectoryInfo(textBox.Text);
                 if (info.Attributes.HasFlag(FileAttributes.Directory))
                 {
                     openFileDialog.InitialDirectory = info.FullName;
@@ -134,7 +141,7 @@ namespace LevelPost
             }
 
             if (openFileDialog.ShowDialog() == true) {
-				LvlFile.Text = openFileDialog.FileName;
+				textBox.Text = openFileDialog.FileName;
                 UpdateAll();
             }
         }
@@ -248,6 +255,15 @@ namespace LevelPost
             }
 
             ConvertSettings settings = new ConvertSettings() { texDirs = dirs, ignoreTexDirs = ignoreDirs };
+
+            if (!BunPrefix.Text.Equals(""))
+            {
+                settings.bundlePrefix = BunPrefix.Text;
+                var f = new DirectoryInfo(BunFile.Text);
+                settings.bundleName = f.Name;
+                settings.bundleDir = f.Parent.Parent.Name;
+            }
+
             new Task(() => Convert(filename, settings)).Start();
         }
 
@@ -268,6 +284,10 @@ namespace LevelPost
         {
             RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\ArneDeBruijn\LevelPost");
             key.SetValue("LvlFile", LvlFile.Text);
+
+            key.SetValue("BunFile", BunFile.Text);
+            key.SetValue("BunPrefix", BunPrefix.Text);
+
             key.SetValue("AutoConvert", AutoConvert.IsChecked == true ? 1 : 0);
             key.SetValue("EditorDir", EditorDir.Text);
             key.SetValue("DebugOptions", DebugOptions.IsChecked == true ? 1 : 0);
