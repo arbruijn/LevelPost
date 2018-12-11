@@ -1,0 +1,17 @@
+﻿<Window x:Class="LevelPost.FindWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:LevelPost"
+        mc:Ignorable="d"
+        Title="FindWindow" Height="132" Width="404"
+        FocusManager.FocusedElement="{x:Reference TxtFind}">
+    <Grid Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}">
+        <Label Content="Find text" HorizontalAlignment="Left" Margin="4,0,0,0" VerticalAlignment="Top"/>
+        <TextBox x:Name="TxtFind" Height="23" Margin="10,31,10,0" Text="TextBox" VerticalAlignment="Top"/>
+        <Button x:Name="Search" Content="Search" HorizontalAlignment="Right" Margin="0,0,106,10" VerticalAlignment="Bottom" Width="75" IsDefault="True" Click="Search_Click" RenderTransformOrigin="-0.68,0.45"/>
+        <Button x:Name="Cancel" Content="Cancel" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" IsCancel="True" Click="Cancel_Click"/>
+
+    </Grid>
+</Window>

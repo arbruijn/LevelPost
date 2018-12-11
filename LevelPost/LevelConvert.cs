@@ -19,6 +19,7 @@ namespace LevelPost
         public int missingTextures;
         public int builtInTextures;
         public int alreadyTextures;
+        public int convertedEntities;
     }
 
     class ConvertSettings
@@ -34,7 +35,7 @@ namespace LevelPost
 
     interface ILevelMod
     {
-        bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats);
+        bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds);
         bool HandleCommand(object[] cmd, List<object[]> ncmds);
         bool IsChanged();
         void Finish(List<object[]> ncmds);
@@ -49,7 +50,7 @@ namespace LevelPost
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private Dictionary<Guid, string> assetNames = new Dictionary<Guid, string>();
 
-        public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats)
+        public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
         {
             this.settings = settings;
             this.log = log;
@@ -200,6 +201,7 @@ namespace LevelPost
                 newCmds.Add(new object[] { VT.CmdMaterialSetColor, matGuid, "_Color", color });
 
                 stats.convertedTextures++;
+                stats.totalTextures++;
                 var msgOpts = new List<string>();
                 if (blocky)
                     msgOpts.Add("blocky");
@@ -219,14 +221,36 @@ namespace LevelPost
         }
     }
 
+    class BunRef
+    {
+        private Guid bundle;
+        private ConvertSettings settings;
+        public Action<string> log;
+
+        public void Init(ConvertSettings settings)
+        {
+            this.settings = settings;
+        }
+
+        public Guid GetGuid(List<object[]> newCmds) {
+            // Load material from asset bundle
+            if (bundle == Guid.Empty) {
+                bundle = Guid.NewGuid();
+                log("Using bundle " + settings.bundleDir + "\\windows\\" + settings.bundleName);
+                newCmds.Add(new object[]{VT.CmdLoadAssetBundle, settings.bundleDir, settings.bundleName, bundle });
+            }
+            return bundle;
+        }
+    }
+
     class BunTexMod : ILevelMod
     {
         private ConvertSettings settings;
         private Action<string> log;
         private ConvertStats stats;
-        private Guid bundle;
+        public BunRef bunRef;
 
-        public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats)
+        public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
         {
             this.settings = settings;
             this.log = log;
@@ -246,12 +270,7 @@ namespace LevelPost
 
                 if (texName.StartsWith(settings.bundlePrefix))
                 {
-                    // Load material from asset bundle
-                    if (bundle == Guid.Empty) {
-                        bundle = Guid.NewGuid();
-                        newCmds.Add(new object[]{VT.CmdLoadAssetBundle, settings.bundleDir, settings.bundleName, bundle});
-                    }
-                    newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, cmd[3] + ".mat", bundle, matGuid});
+                    newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, cmd[3] + ".mat", bunRef.GetGuid(newCmds), matGuid});
 
                     stats.convertedTextures++;
                     log("Converted bundle texture " + texName);
@@ -263,6 +282,79 @@ namespace LevelPost
         public bool IsChanged()
         {
             return stats.convertedTextures != 0;
+        }
+        public void Finish(List<object[]> ncmds)
+        {
+        }
+    }
+
+    class EntityReplaceMod : ILevelMod
+    {
+        private ConvertSettings settings;
+        private Action<string> log;
+        private ConvertStats stats;
+        private Guid bundle;
+        public BunRef bunRef;
+        private readonly Dictionary<Guid, int> objIdx = new Dictionary<Guid, int>();
+        private readonly Dictionary<Guid, string> prefabNames = new Dictionary<Guid, string>();
+        private readonly Dictionary<string, Guid> newPrefabIds = new Dictionary<string, Guid>();
+        private readonly Dictionary<string, string> prefabConvNames = new Dictionary<string, string>()
+            { { "entity_PROP_N0000_MINE", "entity_mine" } };
+
+        public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
+        {
+            this.settings = settings;
+            this.log = log;
+            this.stats = stats;
+
+            var compObj = new Dictionary<Guid, Guid>();
+            foreach (var cmd in cmds)
+                if ((VT)cmd[0] == VT.CmdGetComponentAtRuntime)
+                    compObj.Add((Guid)cmd[4], (Guid)cmd[3]);
+                else if ((VT)cmd[0] == VT.CmdGameObjectSetComponentProperty &&
+                    (string)cmd[2] == "m_index" &&
+                    cmd[5] is int &&
+                    compObj.TryGetValue((Guid)cmd[1], out Guid obj))
+                    objIdx.Add(obj, (int)cmd[5]);
+            return true;
+        }
+
+        public bool HandleCommand(object[] cmd, List<object[]> newCmds)
+        {
+            if ((VT)cmd[0] == VT.CmdFindPrefabReference)
+            {
+                var prefabName = (string)cmd[1];
+                var prefabId = (Guid)cmd[2];
+                if (prefabConvNames.ContainsKey(prefabName))
+                {
+                    prefabNames.Add(prefabId, prefabName);
+                    return true;
+                }
+            } else if ((VT)cmd[0] == VT.CmdInstantiatePrefab) {
+                var prefabId = (Guid)cmd[1];
+                var objId = (Guid)cmd[2];
+                if (prefabNames.TryGetValue(prefabId, out string prefabName))
+                {
+                    int idx = 0;
+                    objIdx.TryGetValue(objId, out idx);
+                    string newPrefabName = prefabConvNames[prefabName] + "_" + idx;
+                    if (!newPrefabIds.TryGetValue(newPrefabName, out Guid newPrefabId))
+                    {
+                        newPrefabId = Guid.NewGuid();
+                        newPrefabIds.Add(newPrefabName, newPrefabId);
+                        newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, newPrefabName, bunRef.GetGuid(newCmds), newPrefabId });
+                    }
+                    newCmds.Add(new object[] { cmd[0], newPrefabId, cmd[2], cmd[3] }); // instantiate new prefab
+                    log("Converted bundle entity " + prefabName + " to " + newPrefabName);
+                    stats.convertedEntities++;
+                    return true;
+                }
+            }
+            return false;
+        }
+        public bool IsChanged()
+        {
+            return stats.convertedEntities != 0;
         }
         public void Finish(List<object[]> ncmds)
         {
@@ -281,7 +373,7 @@ namespace LevelPost
         private Dictionary<Guid, string> assetNames = new Dictionary<Guid, string>();
         private bool changed = false;
 
-        public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats)
+        public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
         {
             this.log = log;
             var lpFilename = new Regex(@"[.][a-z]{1,5}$", RegexOptions.IgnoreCase).Replace(levelFilename, "_levelpost.txt");
@@ -380,12 +472,18 @@ namespace LevelPost
     {
         public static ConvertStats Convert(string levelFilename, ConvertSettings settings, Action<string> log)
         {
+            var level = LevelFile.ReadLevel(levelFilename);
+
             var stats = new ConvertStats();
 
             var mods = new List<ILevelMod>();
 
-            if (settings.bundlePrefix != null)
-                mods.Add(new BunTexMod());
+            if (settings.bundlePrefix != null) {
+                var bufRef = new BunRef() { log = log };
+                bufRef.Init(settings);
+                mods.Add(new BunTexMod() { bunRef = bufRef });
+                mods.Add(new EntityReplaceMod() { bunRef = bufRef });
+            }
 
             mods.Add(new TexMod());
             #if TWEAKS
@@ -393,10 +491,9 @@ namespace LevelPost
             #endif
 
             foreach (var mod in mods)
-                if (!mod.Init(levelFilename, settings, log, stats))
+                if (!mod.Init(levelFilename, settings, log, stats, level.cmds))
                     return stats;
 
-            var level = LevelFile.ReadLevel(levelFilename);
             var newCmds = new List<object[]>();
 
             foreach (var cmd in level.cmds)

@@ -30,6 +30,15 @@ namespace LevelPost
         private bool updating;
         private const int texDirCount = 1;
 
+        private List<Tuple<string, string>> matTexs = new List<Tuple<string, string>> { 
+            new Tuple<string, string>("_MainTex", "Diff"),
+            new Tuple<string, string>("_BumpMap", "Norm"),
+            new Tuple<string, string>("_MetallicGlossMap", "Met"),
+            new Tuple<string, string>("_SpecGlossMap", "Rough"),
+            new Tuple<string, string>("_ParallaxMap", "Height"),
+            new Tuple<string, string>("_EmissionMap", "Emission"),
+        };
+
         public void UpdateWatcher()
         {
             if (watcher == null)
@@ -69,12 +78,20 @@ namespace LevelPost
                     BunPrefix.Text = (string)key.GetValue("BunPrefix");
 
                     EditorDir.Text = (string)key.GetValue("EditorDir");
-                    AutoConvert.IsChecked = (int)key.GetValue("AutoConvert", 1) != 0;
+                    AutoConvert.IsChecked = (int)key.GetValue("AutoConvert", 0) != 0;
                     DebugOptions.IsChecked = (int)key.GetValue("DebugOptions", 0) != 0;
                     for (int i = 1; i <= texDirCount; i++)
                         ((TextBox)this.FindName("TexDir" + i.ToString())).Text = (string)key.GetValue("TexDir" + i.ToString());
 
                     TexPointPx.Text = (string)key.GetValue("TexPointPx", "64");
+
+                    MatDir.Text = (string)key.GetValue("MatDir");
+
+                    foreach (var x in matTexs)
+                    {
+                        string prop = "Mat" + x.Item2;
+                        ((TextBox)FindName(prop)).Text = (string)key.GetValue(prop);
+                    }
                 }
                 else
                 {
@@ -159,6 +176,8 @@ namespace LevelPost
             TextBox textBox;
             if (name.Equals("EditorDirBtn"))
                 textBox = EditorDir;
+            else if (name.Equals("MatDirBtn"))
+                textBox = MatDir;
             else
                 textBox = (TextBox)this.FindName("TexDir" + name.Substring(name.Length - 1));
 
@@ -202,6 +221,8 @@ namespace LevelPost
                     emsg.Add(stats.alreadyTextures + " already converted");
                 if (emsg.Count != 0)
                     msg += " (" + String.Join(", ", emsg.ToArray()) + ")";
+                if (stats.convertedEntities != 0)
+                    msg += ", changed " + stats.convertedEntities + " entities";
                 AddMessage(msg);
             }
             catch (Exception ex)
@@ -307,6 +328,13 @@ namespace LevelPost
             key.SetValue("DebugOptions", DebugOptions.IsChecked == true ? 1 : 0);
 
             key.SetValue("TexPointPx", TexPointPx.Text);
+
+            key.SetValue("MatDir", MatDir.Text);
+            foreach (var x in matTexs)
+            {
+                string prop = "Mat" + x.Item2;
+                key.SetValue(prop, ((TextBox)FindName(prop)).Text);
+            }
 
             for (int i = 1; i <= texDirCount; i++)
                 key.SetValue("TexDir" + i.ToString(), ((TextBox)this.FindName("TexDir" + i.ToString())).Text);

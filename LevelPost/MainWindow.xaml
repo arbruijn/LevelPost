@@ -20,7 +20,7 @@
                     <TextBox x:Name="Messages" HorizontalAlignment="Left" Height="228" Margin="10,142,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="757" Grid.ColumnSpan="2" IsReadOnly="True"/>
                     <Label Content="Messages" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,116,0,0" Grid.ColumnSpan="2" Width="100" Height="26" Padding="0,5,5,5"/>
                     <Button x:Name="ConvertBtn" Grid.ColumnSpan="2" Content="Convert" HorizontalAlignment="Left" Margin="11,62,0,0" VerticalAlignment="Top" Width="75" Click="ConvertBtn_Click" RenderTransformOrigin="0.493,2.3" TabIndex="7"/>
-                    <CheckBox x:Name="AutoConvert" Content="Auto convert on change" Grid.Column="1" HorizontalAlignment="Left" Margin="76,41,0,0" VerticalAlignment="Top" Width="576" IsChecked="True" Click="AutoConvert_Click" TabIndex="6"/>
+                    <CheckBox x:Name="AutoConvert" Content="Auto convert on change" Grid.Column="1" HorizontalAlignment="Left" Margin="76,41,0,0" VerticalAlignment="Top" Width="576" Click="AutoConvert_Click" TabIndex="6"/>
                     <Button x:Name="DumpBtn" Content="Dump" HorizontalAlignment="Left" Margin="37,62,0,0" VerticalAlignment="Top" Width="75" Click="DumpBtn_Click" RenderTransformOrigin="0.493,2.3" TabIndex="7" Grid.Column="1" ToolTip="Dump level structure to new window"/>
                 </Grid>
             </TabItem>
@@ -35,6 +35,31 @@
                     <Button x:Name="BunFileBtn" Content="Select" HorizontalAlignment="Left" Height="22" Margin="654,14,0,0" VerticalAlignment="Top" Width="48" Click="FileButton_Click" Grid.Column="1" TabIndex="5"/>
                     <TextBox x:Name="BunPrefix" HorizontalAlignment="Left" Height="23" Margin="76,44,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="TextChanged" TabIndex="4"/>
                     <Label Content="Bundle prefix" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Material" TabIndex="2">
+                <Grid Background="#FFE5E5E5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="62*"/>
+                        <ColumnDefinition Width="683*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="MatDir" HorizontalAlignment="Left" Height="23" Margin="76,15,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" TextChanged="TextChanged" TabIndex="8" Grid.Column="1"/>
+                    <Label Content="Material directory" HorizontalAlignment="Left" Margin="10,14,0,0" VerticalAlignment="Top" Width="126" Padding="0,5,5,5" Grid.ColumnSpan="2"/>
+                    <Button x:Name="MatDirBtn" Content="Select" HorizontalAlignment="Left" Height="22" Margin="655,16,0,0" VerticalAlignment="Top" Width="50" Click="DirButton_Click" TabIndex="9" Grid.Column="1"/>
+                    <TextBox x:Name="MatDiff" HorizontalAlignment="Left" Height="23" Margin="76,43,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="TextChanged" TabIndex="4"/>
+                    <Label Content="Diffuse suffix" HorizontalAlignment="Left" Margin="10,40,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
+                    <TextBox x:Name="MatNorm" HorizontalAlignment="Left" Height="23" Margin="76,71,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="TextChanged" TabIndex="4"/>
+                    <Label Content="Normal suffix" HorizontalAlignment="Left" Margin="10,68,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
+                    <TextBox x:Name="MatMet" HorizontalAlignment="Left" Height="23" Margin="76,99,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="TextChanged" TabIndex="4"/>
+                    <Label Content="Metallic suffix" HorizontalAlignment="Left" Margin="10,96,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
+                    <TextBox x:Name="MatRough" HorizontalAlignment="Left" Height="23" Margin="76,127,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="TextChanged" TabIndex="4"/>
+                    <Label Content="Roughness suffix" HorizontalAlignment="Left" Margin="10,124,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
+                    <TextBox x:Name="MatHeight" HorizontalAlignment="Left" Height="23" Margin="76,155,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="TextChanged" TabIndex="4"/>
+                    <Label Content="Height suffix" HorizontalAlignment="Left" Margin="10,152,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
+                    <TextBox x:Name="MatEmission" HorizontalAlignment="Left" Height="23" Margin="76,183,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="TextChanged" TabIndex="4"/>
+                    <Label Content="Emission suffix" HorizontalAlignment="Left" Margin="10,180,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
+                    <Button Content="Export to editor png" HorizontalAlignment="Left" Margin="10,250,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2"/>
+                    <Button Content="Delete editor png" HorizontalAlignment="Left" Margin="76,250,0,0" VerticalAlignment="Top" Width="126" Grid.Column="1"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Settings" TabIndex="3">
@@ -64,7 +89,7 @@
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
                     <Image HorizontalAlignment="Left" Height="100" Margin="10,10,50,0" VerticalAlignment="Top" Width="100" Source="icon128.png"/>
-                    <Label x:Name="LblVersion" Content="LevelPost 2018.12.01" HorizontalAlignment="Left" Margin="115,10,0,0" VerticalAlignment="Top" Width="182"/>
+                    <Label x:Name="LblVersion" Content="LevelPost 2018.12.11" HorizontalAlignment="Left" Margin="115,10,0,0" VerticalAlignment="Top" Width="182"/>
                     <Label Content="Arne de Bruijn" HorizontalAlignment="Left" Margin="115,62,0,0" VerticalAlignment="Top"/>
                     <Label x:Name="AboutLink" Content="https://www.arnedebruijn.nl/levelpost" HorizontalAlignment="Left" Margin="115,88,0,0" VerticalAlignment="Top" Cursor="Hand" Foreground="#FF0000EE" MouseUp="AboutLinkClick" TabIndex="12" IsTabStop="True" Focusable="True" KeyDown="AboutLink_KeyDown"/>
                     <Label Content="This is an unrelated, unsupported tool. Use at your own risk!" HorizontalAlignment="Left" Margin="115,114,0,0" VerticalAlignment="Top" Width="502"/>
