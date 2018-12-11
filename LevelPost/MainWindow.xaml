@@ -37,7 +37,7 @@
                     <Label Content="Bundle prefix" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
                 </Grid>
             </TabItem>
-            <TabItem Header="Material" TabIndex="2">
+            <TabItem Header="Material" TabIndex="2" IsEnabled="False" Visibility="Collapsed">
                 <Grid Background="#FFE5E5E5">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="62*"/>
