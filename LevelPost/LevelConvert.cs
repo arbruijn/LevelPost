@@ -260,11 +260,12 @@ namespace LevelPost
 
         public bool HandleCommand(object[] cmd, List<object[]> newCmds)
         {
-            if ((VT)cmd[0] == VT.CmdLoadAssetFromAssetBundle && ((string)cmd[1]).EndsWith(".mat"))
+            if ((VT)cmd[0] == VT.CmdLoadAssetFromAssetBundle && ((string)cmd[1]).EndsWith(".mat")) {
                 stats.alreadyTextures++;
+                stats.totalTextures++;
+            }
             if ((VT)cmd[0] == VT.CmdAssetRegisterMaterial)
             {
-                //stats.totalTextures++;
                 var matGuid = (Guid)cmd[1];
                 string texName = (string)cmd[3];
 
@@ -273,6 +274,7 @@ namespace LevelPost
                     newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, cmd[3] + ".mat", bunRef.GetGuid(newCmds), matGuid});
 
                     stats.convertedTextures++;
+                    stats.totalTextures++;
                     log("Converted bundle texture " + texName);
                     return true;
                 }
@@ -300,6 +302,8 @@ namespace LevelPost
         private readonly Dictionary<string, Guid> newPrefabIds = new Dictionary<string, Guid>();
         private readonly Dictionary<string, string> prefabConvNames = new Dictionary<string, string>()
             { { "entity_PROP_N0000_MINE", "entity_mine" } };
+        private readonly HashSet<Guid> convObj = new HashSet<Guid>();
+        private readonly HashSet<Guid> convComp = new HashSet<Guid>();
 
         public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
         {
@@ -347,8 +351,24 @@ namespace LevelPost
                     newCmds.Add(new object[] { cmd[0], newPrefabId, cmd[2], cmd[3] }); // instantiate new prefab
                     log("Converted bundle entity " + prefabName + " to " + newPrefabName);
                     stats.convertedEntities++;
+                    convObj.Add(objId);
                     return true;
                 }
+            /*
+            } else if ((VT)cmd[0] == VT.CmdGetComponentAtRuntime && convObj.Contains((Guid)cmd[3])) { // Skip get comp for converted
+                convComp.Add((Guid)cmd[4]);
+                return true;
+            } else if ((VT) cmd[0] == VT.CmdGameObjectSetComponentProperty && convComp.Contains((Guid)cmd[1])) {
+                return true;
+            }
+            */
+            } else if ((VT)cmd[0] == VT.CmdGetComponentAtRuntime && convObj.Contains((Guid)cmd[3])) { // Add instead of get comp for converted
+                string type = (string)cmd[2];
+                if (type == "PropBase")
+                    type = "PropGeneric";
+                newCmds.Add(new object[] { VT.CmdGameObjectAddComponent, cmd[3], cmd[4], type });
+                convObj.Remove((Guid)cmd[3]); // Treat no longer as converted
+                return true;
             }
             return false;
         }
@@ -478,10 +498,12 @@ namespace LevelPost
 
             var mods = new List<ILevelMod>();
 
-            if (settings.bundlePrefix != null) {
+            if (settings.bundleName != null && settings.bundleName != "")
+            {
                 var bufRef = new BunRef() { log = log };
                 bufRef.Init(settings);
-                mods.Add(new BunTexMod() { bunRef = bufRef });
+                if (settings.bundlePrefix != null && settings.bundlePrefix != "")
+                    mods.Add(new BunTexMod() { bunRef = bufRef });
                 mods.Add(new EntityReplaceMod() { bunRef = bufRef });
             }
 

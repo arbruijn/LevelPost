@@ -291,9 +291,10 @@ namespace LevelPost
                 texPointPx = texPointPx
             };
 
-            if (!BunPrefix.Text.Equals(""))
+            if (!BunFile.Text.Equals(""))
             {
-                settings.bundlePrefix = BunPrefix.Text;
+                if (!BunPrefix.Text.Equals(""))
+                    settings.bundlePrefix = BunPrefix.Text;
                 var f = new DirectoryInfo(BunFile.Text);
                 settings.bundleName = f.Name;
                 settings.bundleDir = f.Parent.Parent.Name;
