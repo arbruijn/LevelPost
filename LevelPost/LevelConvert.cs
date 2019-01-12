@@ -49,12 +49,24 @@ namespace LevelPost
         private Regex ignore = new Regex(@"^((alien|cc|ec|emissive|ice|ind|lava|mat|matcen|om|rockwall|solid|foundry|lavafall|lightblocks|metalbeam|security|stripewarning|titan|tn|utility|warningsign)_|transparent1$)",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private Dictionary<Guid, string> assetNames = new Dictionary<Guid, string>();
+        private Dictionary<Guid, Guid> texMatIds = new Dictionary<Guid, Guid>();
+        private Dictionary<Guid, string> matNames = new Dictionary<Guid, string>();
+        private readonly HashSet<Guid> updMats = new HashSet<Guid>();
 
         public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
         {
             this.settings = settings;
             this.log = log;
             this.stats = stats;
+
+            var compObj = new Dictionary<Guid, Guid>();
+            foreach (var cmd in cmds)
+                if ((VT)cmd[0] == VT.CmdAssetRegisterMaterial)
+                    matNames.Add((Guid)cmd[1], (string)cmd[3]);
+                else if ((VT)cmd[0] == VT.CmdMaterialSetTexture &&
+                    (string)cmd[2] == "_MainTex")
+                    texMatIds.Add((Guid)cmd[3], (Guid)cmd[1]);
+
             return true;
         }
 
@@ -113,16 +125,63 @@ namespace LevelPost
             return dstData;
         }
 
+        private object[] MakeTexCmd(string texName, Guid texGuid, out bool blocky)
+        {
+            blocky = false;
+            string texFilename = FindTextureFile(texName);
+            if (texFilename == null)
+                return null;
+
+            Bitmap bmp;
+            try
+            {
+                bmp = new Bitmap(texFilename);
+            }
+            catch (Exception ex)
+            {
+                log("Error loading file " + texFilename + ": " + ex.Message);
+                return null;
+            }
+
+            bool hasAlpha;
+            var texData = GetBitmapData(bmp, out hasAlpha);
+            blocky = bmp.Width <= settings.texPointPx;
+
+            return new object[] { VT.CmdCreateTexture2D, texGuid, bmp.Width, bmp.Height,
+                    hasAlpha ? "ARGB32" : "RGB24",
+                    false,
+                    blocky ? "Point" : "Bilinear",
+                    texName, texData };
+        }
+
         public bool HandleCommand(object[] cmd, List<object[]> newCmds)
         {
             if ((VT) cmd[0] == VT.CmdLoadAssetFromAssetBundle)
                 assetNames.Add((Guid) cmd[3], (string) cmd[1]);
+            if ((VT)cmd[0] == VT.CmdCreateTexture2D &&
+                texMatIds.TryGetValue((Guid)cmd[1], out Guid matId) &&
+                matNames.TryGetValue(matId, out string matName) &&
+                matName.StartsWith("$CT$:"))
+            {
+                var texName = matName.Substring(5);
+                var texCmd = MakeTexCmd(texName, (Guid)cmd[1], out bool blocky);
+                if (texCmd == null)
+                    return false;
+                newCmds.Add(texCmd);
+                updMats.Add(matId);
+                log("Updated texture " + texName + (blocky ? " (blocky)" : ""));
+                stats.convertedTextures++;
+                stats.totalTextures++;
+                return true;
+            }
             if ((VT) cmd[0] == VT.CmdAssetRegisterMaterial)
             {
                 stats.totalTextures++;
                 var matGuid = (Guid)cmd[1];
                 string texName = (string)cmd[3];
-                if (texName.StartsWith("$INTERNAL$:") || texName.Equals("$"))
+                if (texName.StartsWith("$CT$:")) // this is updated/logged/counted with CmdCreateTexture2D
+                    return false;
+                if (texName.StartsWith("$INTERNAL$:") || texName.Equals("$") || texName.StartsWith("$LP$:"))
                 {
                     if (texName.Equals("$"))
                     {
@@ -140,6 +199,12 @@ namespace LevelPost
                     return false;
                 }
 
+                var texGuid = Guid.NewGuid();
+                var texCmd = MakeTexCmd(texName, texGuid, out bool blocky);
+                if (texCmd == null)
+                    return false;
+                newCmds.Add(texCmd);
+
                 /*
                 // Load material from asset bundle
                 if (bundle == Guid.Empty) {
@@ -149,29 +214,6 @@ namespace LevelPost
                 Guid asset = Guid.NewGuid();
                 ncmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, cmd[3] + ".mat", bundle, matGuid});
                 */
-
-                string texFilename = FindTextureFile(texName);
-                if (texFilename == null)
-                    return false;
-
-                Bitmap bmp;
-                try {
-                    bmp = new Bitmap(texFilename);
-                } catch (Exception ex) {
-                    log("Error loading file " + texFilename + ": " + ex.Message);
-                    return false;
-                }
-
-                bool hasAlpha;
-                var texData = GetBitmapData(bmp, out hasAlpha);
-                bool blocky = bmp.Width <= settings.texPointPx;
-
-                var texGuid = Guid.NewGuid();
-                newCmds.Add(new object[] { VT.CmdCreateTexture2D, texGuid, bmp.Width, bmp.Height,
-                    hasAlpha ? "ARGB32" : "RGB24",
-                    false,
-                    blocky ? "Point" : "Bilinear",
-                    texName, texData });
 
                 /*
                 // Load shader from asset bundle if not yet loaded
@@ -192,10 +234,10 @@ namespace LevelPost
                 ncmds.Add(new object[] { VT.CmdCreateMaterial, matGuid, shaderGuid, color, false, texGuid, texOfs, texScale, 0, kws, texName });
                 */
 
-                // Create new material with CmdAssetRegisterMaterial for invalid name "$",
+                // Create new material with CmdAssetRegisterMaterial for invalid name "$CT$:" + texName,
                 // which creates default green material with simple Diffuse shader,
                 // and change material properties to our texture. Diffuse shader only has _MainTex :(
-                newCmds.Add(new object[] { VT.CmdAssetRegisterMaterial, matGuid, cmd[2], "$" });
+                newCmds.Add(new object[] { VT.CmdAssetRegisterMaterial, matGuid, cmd[2], "$CT$:" + texName });
                 newCmds.Add(new object[] { VT.CmdMaterialSetTexture, matGuid, "_MainTex", texGuid });
                 var color = new object[] { VT.Color, 1.0f, 1.0f, 1.0f, 1.0f };
                 newCmds.Add(new object[] { VT.CmdMaterialSetColor, matGuid, "_Color", color });
