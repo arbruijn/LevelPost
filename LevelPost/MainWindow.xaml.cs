@@ -1,21 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.IO;
 using Microsoft.Win32;
 //using Microsoft.WindowsAPICodePack.Dialogs;
 using System.Timers;
+using System.Media;
 
 namespace LevelPost
 {
@@ -29,6 +22,7 @@ namespace LevelPost
         private bool converting;
         private bool updating;
         private const int texDirCount = 1;
+        private BundleFiles bundleFiles;
 
         private List<Tuple<string, string>> matTexs = new List<Tuple<string, string>> { 
             new Tuple<string, string>("_MainTex", "Diff"),
@@ -80,6 +74,7 @@ namespace LevelPost
                     EditorDir.Text = (string)key.GetValue("EditorDir");
                     AutoConvert.IsChecked = (int)key.GetValue("AutoConvert", 0) != 0;
                     DebugOptions.IsChecked = (int)key.GetValue("DebugOptions", 0) != 0;
+                    DoneBeep.IsChecked = (int)key.GetValue("DoneBeep", 0) != 0;
                     for (int i = 1; i <= texDirCount; i++)
                         ((TextBox)this.FindName("TexDir" + i.ToString())).Text = (string)key.GetValue("TexDir" + i.ToString());
 
@@ -114,6 +109,21 @@ namespace LevelPost
             updating = false;
             UpdateAll();
 
+            bundleFiles = new BundleFiles();
+            /*
+            bf.ScanBundles(GetCustomLevelDir());
+            var bs = bf.Bundles.Keys.ToArray();
+            int nmat = 0, ngo = 0;
+            foreach (var x in bf.Bundles.Values)
+            {
+                nmat += x.materials.Count();
+                ngo += x.gameObjects.Count();
+            }
+            AddMessage("Found " + bs.Length + " bundles with " + nmat + " materials and " + ngo + " game objects.");
+            AddMessage(String.Join(", ", bs));
+            AddMessage(String.Join(", ", bf.Bundles.Values.Select(x => String.Join(", ", x.materials))));
+            AddMessage(String.Join(", ", bf.Bundles.Values.Select(x => String.Join(", ", x.gameObjects))));
+            */
             AddMessage("Ready.");
         }
 
@@ -141,6 +151,11 @@ namespace LevelPost
             });
         }
 
+        private string GetCustomLevelDir()
+        {
+            return Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) + @"\Revival\Overload";
+        }
+
         private void FileButton_Click(object sender, RoutedEventArgs e)
         {
             string btnName = ((Button)sender).Name;
@@ -161,7 +176,7 @@ namespace LevelPost
             }
             else
             {
-                openFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) + @"\Revival\Overload";
+                openFileDialog.InitialDirectory = GetCustomLevelDir();
             }
 
             if (openFileDialog.ShowDialog() == true) {
@@ -224,6 +239,7 @@ namespace LevelPost
                 if (stats.convertedEntities != 0)
                     msg += ", changed " + stats.convertedEntities + " entities";
                 AddMessage(msg);
+                this.Dispatcher.Invoke(() => { if (DoneBeep.IsChecked == true) SystemSounds.Beep.Play(); });
             }
             catch (Exception ex)
             {
@@ -293,11 +309,30 @@ namespace LevelPost
 
             if (!BunFile.Text.Equals(""))
             {
-                if (!BunPrefix.Text.Equals(""))
-                    settings.bundlePrefix = BunPrefix.Text;
-                var f = new DirectoryInfo(BunFile.Text);
+                string path = BunFile.Text;
+                BundleInfo info;
+                try
+                {
+                    info = bundleFiles.CachedBundleInfo(path);
+                }
+                catch (Exception ex)
+                {
+                    AddMessage("Error: cannot read bundle file " + ex.Message);
+                    return;
+                }
+                //if (!BunPrefix.Text.Equals(""))
+                //    settings.bundlePrefix = BunPrefix.Text;
+                var f = new DirectoryInfo(path);
                 settings.bundleName = f.Name;
                 settings.bundleDir = f.Parent.Parent.Name;
+                settings.bundleMaterials = info.materials;
+                settings.bundleGameObjects = info.gameObjects;
+                string levelDir = new DirectoryInfo(filename).Parent.FullName;
+                if (!f.Parent.Parent.Parent.FullName.Equals(levelDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    AddMessage("Warning: the bundle file is not in correct subdirectory of the level file!");
+                    AddMessage("The bundle file must be at " + Path.Combine(levelDir, settings.bundleDir, "windows", settings.bundleName));
+                }
             }
 
             new Task(() => Convert(filename, settings)).Start();
@@ -327,6 +362,7 @@ namespace LevelPost
             key.SetValue("AutoConvert", AutoConvert.IsChecked == true ? 1 : 0);
             key.SetValue("EditorDir", EditorDir.Text);
             key.SetValue("DebugOptions", DebugOptions.IsChecked == true ? 1 : 0);
+            key.SetValue("DoneBeep", DoneBeep.IsChecked == true ? 1 : 0);
 
             key.SetValue("TexPointPx", TexPointPx.Text);
 
@@ -349,7 +385,7 @@ namespace LevelPost
                 return;
             Dispatcher.Invoke(() =>
             {
-                if (!e.FullPath.Equals(LvlFile.Text, StringComparison.InvariantCultureIgnoreCase))
+                if (!e.FullPath.Equals(LvlFile.Text, StringComparison.OrdinalIgnoreCase))
                     return;
                 long len = new FileInfo(e.FullPath).Length;
                 //AddMessage("Changed File: " + e.FullPath + " " + e.ChangeType + " " + len);
@@ -434,6 +470,11 @@ namespace LevelPost
         private void TexPointPx_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             e.Handled = e.Text.CompareTo("0") >= 0 && e.Text.CompareTo("9") <= 0;
+        }
+
+        private void DoneBeep_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateAll();
         }
     }
 }

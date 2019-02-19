@@ -29,8 +29,10 @@ namespace LevelPost
         public List<string> ignoreTexDirs;
         public string bundleDir;
         public string bundleName;
-        public string bundlePrefix;
+        //public string bundlePrefix;
         public int texPointPx;
+        public HashSet<string> bundleMaterials;
+        public HashSet<string> bundleGameObjects;
     }
 
     interface ILevelMod
@@ -181,7 +183,7 @@ namespace LevelPost
                 string texName = (string)cmd[3];
                 if (texName.StartsWith("$CT$:")) // this is updated/logged/counted with CmdCreateTexture2D
                     return false;
-                if (texName.StartsWith("$INTERNAL$:") || texName.Equals("$") || texName.StartsWith("$LP$:"))
+                if (texName.StartsWith("$INTERNAL$:") || texName.Equals("$") || texName.StartsWith("$CT$:"))
                 {
                     if (texName.Equals("$"))
                     {
@@ -274,11 +276,23 @@ namespace LevelPost
             this.settings = settings;
         }
 
-        public Guid GetGuid(List<object[]> newCmds) {
+        private static string FmtCount(int n, string singular, string plural)
+        {
+            return n + " " + (n == 1 ? singular : plural);
+        }
+
+        public Guid GetGuid(List<object[]> newCmds)
+        {
             // Load material from asset bundle
             if (bundle == Guid.Empty) {
                 bundle = Guid.NewGuid();
-                log("Using bundle " + settings.bundleDir + "\\windows\\" + settings.bundleName);
+                var parts = new List<string>();
+                if (settings.bundleMaterials != null && settings.bundleMaterials.Count != 0)
+                    parts.Add(FmtCount(settings.bundleMaterials.Count, "material", "materials"));
+                if (settings.bundleGameObjects != null && settings.bundleGameObjects.Count != 0)
+                    parts.Add(FmtCount(settings.bundleGameObjects.Count, "entity", "entities"));
+                log("Using bundle " + Path.Combine(settings.bundleDir, "windows", settings.bundleName) +
+                    (parts.Count != 0 ? " (" + String.Join(", ", parts) + ")" : ""));
                 newCmds.Add(new object[]{VT.CmdLoadAssetBundle, settings.bundleDir, settings.bundleName, bundle });
             }
             return bundle;
@@ -311,7 +325,7 @@ namespace LevelPost
                 var matGuid = (Guid)cmd[1];
                 string texName = (string)cmd[3];
 
-                if (texName.StartsWith(settings.bundlePrefix))
+                if (settings.bundleMaterials.Contains(texName))
                 {
                     newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, cmd[3] + ".mat", bunRef.GetGuid(newCmds), matGuid});
 
@@ -337,7 +351,6 @@ namespace LevelPost
         private ConvertSettings settings;
         private Action<string> log;
         private ConvertStats stats;
-        private Guid bundle;
         public BunRef bunRef;
         private readonly Dictionary<Guid, int> objIdx = new Dictionary<Guid, int>();
         private readonly Dictionary<Guid, string> prefabNames = new Dictionary<Guid, string>();
@@ -346,6 +359,7 @@ namespace LevelPost
             { { "entity_PROP_N0000_MINE", "entity_mine" } };
         private readonly HashSet<Guid> convObj = new HashSet<Guid>();
         private readonly HashSet<Guid> convComp = new HashSet<Guid>();
+        private readonly HashSet<string> unconvPrefabs= new HashSet<string>();
 
         public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
         {
@@ -371,7 +385,7 @@ namespace LevelPost
             {
                 var prefabName = (string)cmd[1];
                 var prefabId = (Guid)cmd[2];
-                if (prefabConvNames.ContainsKey(prefabName))
+                if (prefabConvNames.ContainsKey(prefabName)) // we'll likely load this from bundle, don't use find prefab
                 {
                     prefabNames.Add(prefabId, prefabName);
                     return true;
@@ -384,6 +398,15 @@ namespace LevelPost
                     int idx = 0;
                     objIdx.TryGetValue(objId, out idx);
                     string newPrefabName = prefabConvNames[prefabName] + "_" + idx;
+                    if (!settings.bundleGameObjects.Contains(newPrefabName))
+                    {
+                        log("Ignored entity " + prefabName + " index " + idx + ", " + newPrefabName + " is not in bundle.");
+                        if (!unconvPrefabs.Contains(prefabName)) { // can't load, do use find prefab after all
+                            unconvPrefabs.Add(prefabName);
+                            newCmds.Add(new object[] { VT.CmdFindPrefabReference, prefabName, prefabId });
+                        }
+                        return false;
+                    }
                     if (!newPrefabIds.TryGetValue(newPrefabName, out Guid newPrefabId))
                     {
                         newPrefabId = Guid.NewGuid();
@@ -391,7 +414,7 @@ namespace LevelPost
                         newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, newPrefabName, bunRef.GetGuid(newCmds), newPrefabId });
                     }
                     newCmds.Add(new object[] { cmd[0], newPrefabId, cmd[2], cmd[3] }); // instantiate new prefab
-                    log("Converted bundle entity " + prefabName + " to " + newPrefabName);
+                    log("Converted bundle entity " + prefabName + " index " + idx + " to " + newPrefabName);
                     stats.convertedEntities++;
                     convObj.Add(objId);
                     return true;
@@ -544,9 +567,10 @@ namespace LevelPost
             {
                 var bufRef = new BunRef() { log = log };
                 bufRef.Init(settings);
-                if (settings.bundlePrefix != null && settings.bundlePrefix != "")
+                if (settings.bundleMaterials != null)
                     mods.Add(new BunTexMod() { bunRef = bufRef });
-                mods.Add(new EntityReplaceMod() { bunRef = bufRef });
+                if (settings.bundleGameObjects != null)
+                    mods.Add(new EntityReplaceMod() { bunRef = bufRef });
             }
 
             mods.Add(new TexMod());
