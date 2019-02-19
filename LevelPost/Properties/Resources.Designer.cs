@@ -59,5 +59,25 @@ namespace LevelPost.Properties {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] lzmadec {
+            get {
+                object obj = ResourceManager.GetObject("lzmadec", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] lzmadec32 {
+            get {
+                object obj = ResourceManager.GetObject("lzmadec32", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
     }
 }
