@@ -20,6 +20,10 @@ namespace LevelPost
         public int builtInTextures;
         public int alreadyTextures;
         public int convertedEntities;
+        public int delProbes;
+        public int hiddenProbes;
+        public int convertedProbes;
+        public int changedProbes;
     }
 
     class ConvertSettings
@@ -33,6 +37,10 @@ namespace LevelPost
         public int texPointPx;
         public HashSet<string> bundleMaterials;
         public HashSet<string> bundleGameObjects;
+        public bool defaultProbeRemove;
+        public bool defaultProbeHide;
+        public bool boxLavaNormalProbe;
+        public int probeRes;
     }
 
     interface ILevelMod
@@ -446,6 +454,218 @@ namespace LevelPost
         }
     }
 
+    class ReflectionProbeMod : ILevelMod
+    {
+        private ConvertSettings settings;
+        private Action<string> log;
+        private ConvertStats stats;
+        private readonly Dictionary<Guid, Vector3> objSize = new Dictionary<Guid, Vector3>();
+        private readonly Dictionary<Guid, int> objRptDelay = new Dictionary<Guid, int>();
+        private readonly Dictionary<Guid, int> objImportance = new Dictionary<Guid, int>();
+        private readonly Dictionary<Guid, string> prefabNames = new Dictionary<Guid, string>();
+        private readonly Dictionary<string, Guid> newPrefabIds = new Dictionary<string, Guid>();
+        private readonly Dictionary<string, string> prefabConvNames = new Dictionary<string, string>()
+            { { "entity_PROP_N0000_MINE", "entity_mine" } };
+        private readonly HashSet<Guid> RemoveObj = new HashSet<Guid>();
+        private readonly HashSet<Guid> convComp = new HashSet<Guid>();
+        private readonly HashSet<string> unconvPrefabs = new HashSet<string>();
+        private readonly Dictionary<Guid, Guid> compObj = new Dictionary<Guid, Guid>();
+
+        public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
+        {
+            this.settings = settings;
+            this.log = log;
+            this.stats = stats;
+
+            if (settings.defaultProbeRemove)
+                foreach (var cmd in cmds)
+                    if ((VT)cmd[0] == VT.CmdGameObjectAddComponent && (string)cmd[3] == "ReflectionProbe")
+                        RemoveObj.Add((Guid)cmd[1]);
+            if (settings.boxLavaNormalProbe)
+            {
+                foreach (var cmd in cmds)
+                    if ((VT)cmd[0] == VT.CmdGetComponentAtRuntime)
+                        compObj.Add((Guid)cmd[4], (Guid)cmd[3]);
+                    else if ((VT)cmd[0] == VT.CmdGameObjectAddComponent)
+                        compObj.Add((Guid)cmd[2], (Guid)cmd[1]);
+                    else if ((VT)cmd[0] == VT.CmdGameObjectSetComponentProperty &&
+                        (string)cmd[2] == "m_size" &&
+                        cmd[5] is object[] val &&
+                        (VT)val[0] == VT.Vector3b &&
+                        compObj.TryGetValue((Guid)cmd[1], out Guid obj) &&
+                        !objSize.ContainsKey(obj))
+                        objSize.Add(obj, new Vector3() { x = (float)val[1], y = (float)val[2], z = (float)val[3] });
+                    else if ((VT)cmd[0] == VT.CmdGameObjectSetComponentProperty &&
+                        (string)cmd[2] == "m_repeat_delay" &&
+                        cmd[5] is float val2 &&
+                        compObj.TryGetValue((Guid)cmd[1], out Guid obj2) &&
+                        !objRptDelay.ContainsKey(obj2))
+                        objRptDelay.Add(obj2, (int)val2);
+                    else if ((VT)cmd[0] == VT.CmdGameObjectSetComponentProperty &&
+                        (string)cmd[2] == "importance" &&
+                        cmd[5] is int val3 &&
+                        compObj.TryGetValue((Guid)cmd[1], out Guid obj3) &&
+                        !objImportance.ContainsKey(obj3)) {
+                        objImportance.Add(obj3, val3);
+                        RemoveObj.Remove(obj3);
+                    }
+            }
+            return true;
+        }
+
+        public bool HandleCommand(object[] cmd, List<object[]> newCmds)
+        {
+            if ((VT)cmd[0] == VT.CmdGameObjectSetComponentProperty &&
+                (string)cmd[2] == "m_level_reflection_probes" &&
+                (settings.defaultProbeRemove || settings.defaultProbeHide))
+            {
+                if (!settings.defaultProbeRemove) // no message if also removed
+                {
+                    int n = ((object[])cmd[5]).Length - 1;
+                    //log("Hidden " + n + " probes");
+                    stats.hiddenProbes += n;
+                }
+                newCmds.Add(new object[] { cmd[0], cmd[1], cmd[2], cmd[3], cmd[4], new object[] { VT.SegmentReflectionProbeInfoArray }  });
+                return true;
+            }
+            /*
+            if ((VT)cmd[0] == VT.CmdGameObjectSetComponentProperty &&
+                (string)cmd[2] == "m_level_lights" &&
+                (settings.defaultProbeRemove || settings.defaultProbeHide))
+            {
+                if (!settings.defaultProbeRemove)
+                {
+                    log("Hidden " + (((object[])cmd[5]).Length - 1) + " lights");
+                    stats.hiddenProbes++;
+                }
+                newCmds.Add(new object[] { cmd[0], cmd[1], cmd[2], cmd[3], cmd[4], new object[] { VT.SegmentLightInfoArray } });
+                return true;
+            }
+            */
+            if ((VT)cmd[0] == VT.CmdCreateGameObject && RemoveObj.Contains((Guid)cmd[1]))
+            {
+                RemoveObj.Add((Guid)cmd[2]);
+                stats.delProbes++;
+                return true;
+            }
+            if ((VT)cmd[0] == VT.CmdGameObjectAddComponent && RemoveObj.Contains((Guid)cmd[1]))
+            {
+                RemoveObj.Add((Guid)cmd[2]);
+                return true;
+            }
+            if ((VT)cmd[0] == VT.CmdGetComponentAtRuntime && RemoveObj.Contains((Guid)cmd[3]))
+            {
+                RemoveObj.Add((Guid)cmd[4]);
+                return true;
+            }
+            if (((VT)cmd[0] == VT.CmdGameObjectSetName ||
+                (VT)cmd[0] == VT.CmdTransformSetParent ||
+                (VT)cmd[0] == VT.CmdGameObjectSetComponentProperty ||
+                (VT)cmd[0] == VT.CmdGameObjectSetLayer ||
+                (VT)cmd[0] == VT.CmdGameObjectSetTag) && RemoveObj.Contains((Guid)cmd[1]))
+                return true;
+
+            if ((VT)cmd[0] == VT.CmdFindPrefabReference)
+            {
+                prefabNames.Add((Guid)cmd[2], (string)cmd[1]);
+                return false;
+            }
+            if ((VT)cmd[0] == VT.CmdGameObjectSetComponentProperty &&
+                (string)cmd[2] == "resolution" &&
+                cmd[5] is int val1 &&
+                compObj.TryGetValue((Guid)cmd[1], out Guid obj1) &&
+                objImportance.ContainsKey(obj1) &&
+                val1 != settings.probeRes) {
+                //log("Changed resolution for custom probe to " + settings.probeRes);
+                newCmds.Add(new object[] { cmd[0], cmd[1], cmd[2], cmd[3], cmd[4], settings.probeRes });
+                stats.changedProbes++;
+                return true;
+            }
+
+
+            if ((VT)cmd[0] == VT.CmdInstantiatePrefab &&
+                prefabNames.TryGetValue((Guid)cmd[1], out string prefabName) &&
+                prefabName == "entity_TRIGGER_BOX_LAVA_NORMAL" &&
+                settings.boxLavaNormalProbe)
+            {
+                Guid objId = (Guid)cmd[2], transId = (Guid)cmd[3], rpId = Guid.NewGuid();
+                newCmds.Add(new object[] { VT.CmdCreateGameObject, objId, transId });
+                newCmds.Add(new object[] { VT.CmdGameObjectAddComponent, objId, rpId, "ReflectionProbe" });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "mode", (byte)0, (byte)0,
+                    new object[] { VT.Enum, 0, "UnityEngine.Rendering.ReflectionProbeMode" } });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "refreshMode", (byte)0, (byte)0,
+                    new object[] { VT.Enum, 0, "UnityEngine.Rendering.ReflectionProbeRefreshMode" } });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "boxProjection", (byte)0, (byte)0, true });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "resolution", (byte)0, (byte)0, settings.probeRes });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "intensity", (byte)0, (byte)0, 1.5f });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "clearFlags", (byte)0, (byte)0,
+                    new object[] { VT.Enum, 0, "UnityEngine.Rendering.ReflectionProbeClearFlags" } });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "backgroundColor", (byte)0, (byte)0,
+                    new object[] { VT.Color, 0f, 0f, 0f, 1f } });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "cullingMask", (byte)0, (byte)0, -134220801 });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "center", (byte)0, (byte)0,
+                    new Vector3() { x = 0f, y = 0f, z = 0f } });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "size", (byte)0, (byte)0,
+                    objSize[objId] });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "farClipPlane", (byte)0, (byte)0, 100f });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "nearClipPlane", (byte)0, (byte)0, 0.3f });
+                newCmds.Add(new object[] { VT.CmdGameObjectSetComponentProperty, rpId, "importance", (byte)0, (byte)0, objRptDelay[objId] });
+
+                RemoveObj.Add(objId);
+
+                stats.convertedProbes++;
+
+                return true;
+                /*
+                var prefabId = (Guid)cmd[1];
+                var objId = (Guid)cmd[2];
+                if (prefabNames.TryGetValue(prefabId, out string prefabName))
+                {
+                    int idx = 0;
+                    objIdx.TryGetValue(objId, out idx);
+                    string newPrefabName = prefabConvNames[prefabName] + "_" + idx;
+                    if (!settings.bundleGameObjects.Contains(newPrefabName))
+                    {
+                        log("Ignored entity " + prefabName + " index " + idx + ", " + newPrefabName + " is not in bundle.");
+                        if (!unconvPrefabs.Contains(prefabName))
+                        { // can't load, do use find prefab after all
+                            unconvPrefabs.Add(prefabName);
+                            newCmds.Add(new object[] { VT.CmdFindPrefabReference, prefabName, prefabId });
+                        }
+                        return false;
+                    }
+                    if (!newPrefabIds.TryGetValue(newPrefabName, out Guid newPrefabId))
+                    {
+                        newPrefabId = Guid.NewGuid();
+                        newPrefabIds.Add(newPrefabName, newPrefabId);
+                        newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, newPrefabName, bunRef.GetGuid(newCmds), newPrefabId });
+                    }
+                    newCmds.Add(new object[] { cmd[0], newPrefabId, cmd[2], cmd[3] }); // instantiate new prefab
+                    log("Converted bundle entity " + prefabName + " index " + idx + " to " + newPrefabName);
+                    stats.convertedEntities++;
+                    convObj.Add(objId);
+                    return true;
+                }
+                */
+            }
+            return false;
+        }
+        public bool IsChanged()
+        {
+            if (stats.delProbes != 0)
+                log("Removed " + stats.delProbes + " default reflection probe" + (stats.delProbes != 1 ? "s" : ""));
+            if (stats.hiddenProbes != 0)
+                log("Forced on " + stats.hiddenProbes + " default reflection probe" + (stats.hiddenProbes != 1 ? "s" : ""));
+            if (stats.convertedProbes != 0)
+                log("Converted " + stats.convertedProbes + " triggers to reflection probe" + (stats.convertedProbes != 1 ? "s" : ""));
+            if (stats.changedProbes != 0)
+                log("Changed " + stats.changedProbes + " reflection probe" + (stats.changedProbes != 1 ? "s" : ""));
+            return stats.delProbes != 0 || stats.hiddenProbes != 0 || stats.convertedProbes != 0 || stats.changedProbes != 0;
+        }
+        public void Finish(List<object[]> ncmds)
+        {
+        }
+    }
 
 #if TWEAKS
     class EntityTweaker : ILevelMod
@@ -572,6 +792,9 @@ namespace LevelPost
                 if (settings.bundleGameObjects != null)
                     mods.Add(new EntityReplaceMod() { bunRef = bufRef });
             }
+
+            if (settings.defaultProbeRemove || settings.defaultProbeHide || settings.boxLavaNormalProbe)
+                mods.Add(new ReflectionProbeMod());
 
             mods.Add(new TexMod());
             #if TWEAKS

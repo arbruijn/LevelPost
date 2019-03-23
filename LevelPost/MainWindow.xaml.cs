@@ -23,6 +23,7 @@ namespace LevelPost
         private bool updating;
         private const int texDirCount = 1;
         private BundleFiles bundleFiles;
+        private readonly int[] resArray = new [] { 128, 256, 512, 1024, 2048 };
 
         private List<Tuple<string, string>> matTexs = new List<Tuple<string, string>> { 
             new Tuple<string, string>("_MainTex", "Diff"),
@@ -87,6 +88,13 @@ namespace LevelPost
                         string prop = "Mat" + x.Item2;
                         ((TextBox)FindName(prop)).Text = (string)key.GetValue(prop);
                     }
+
+                    DefaultProbes_ForceOn.IsChecked = (int)key.GetValue("DefaultProbesForceOn", 0) != 0;
+                    DefaultProbes_Remove.IsChecked = (int)key.GetValue("DefaultProbesRemove", 0) != 0;
+                    int res = (int)key.GetValue("CustomProbeRes", 256);
+                    if (Array.IndexOf(resArray, res) >= 0)
+                        ((RadioButton)FindName("ProbeRes_" + res)).IsChecked = true;
+                    BoxLavaNormalProbe.IsChecked = (int)key.GetValue("BoxLavaNormalProbe", 0) != 0;
                 }
                 else
                 {
@@ -307,6 +315,14 @@ namespace LevelPost
                 texPointPx = texPointPx
             };
 
+            settings.defaultProbeHide = DefaultProbes_ForceOn.IsChecked.Value;
+            settings.defaultProbeRemove = DefaultProbes_Remove.IsChecked.Value;
+            settings.boxLavaNormalProbe = BoxLavaNormalProbe.IsChecked.Value;
+            settings.probeRes = 256;
+            foreach (var res in resArray)
+              if (((RadioButton)FindName("ProbeRes_" + res)).IsChecked.Value)
+                settings.probeRes = res;
+
             if (!BunFile.Text.Equals(""))
             {
                 string path = BunFile.Text;
@@ -317,7 +333,7 @@ namespace LevelPost
                 }
                 catch (Exception ex)
                 {
-                    AddMessage("Error: cannot read bundle file " + ex.Message);
+                    AddMessage("Error: cannot read bundle file: " + ex.Message);
                     return;
                 }
                 //if (!BunPrefix.Text.Equals(""))
@@ -376,7 +392,14 @@ namespace LevelPost
             for (int i = 1; i <= texDirCount; i++)
                 key.SetValue("TexDir" + i.ToString(), ((TextBox)this.FindName("TexDir" + i.ToString())).Text);
 
-            key.Close(); 
+            key.SetValue("DefaultProbesForceOn", DefaultProbes_ForceOn.IsChecked == true ? 1 : 0);
+            key.SetValue("DefaultProbesRemove", DefaultProbes_Remove.IsChecked == true ? 1 : 0);
+            key.SetValue("BoxLavaNormalProbe", BoxLavaNormalProbe.IsChecked == true ? 1 : 0);
+            foreach (var res in resArray)
+                if (((RadioButton)FindName("ProbeRes_" + res)).IsChecked.Value)
+                    key.SetValue("CustomProbeRes", res);
+
+            key.Close();
         }
 
         private void OnChanged(object source, FileSystemEventArgs e)
@@ -462,7 +485,7 @@ namespace LevelPost
             }).Start();
         }
 
-        private void DebugOptions_Click(object sender, RoutedEventArgs e)
+        private void Field_Click(object sender, RoutedEventArgs e)
         {
             UpdateAll();
         }
@@ -470,11 +493,6 @@ namespace LevelPost
         private void TexPointPx_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             e.Handled = e.Text.CompareTo("0") >= 0 && e.Text.CompareTo("9") <= 0;
-        }
-
-        private void DoneBeep_Click(object sender, RoutedEventArgs e)
-        {
-            UpdateAll();
         }
     }
 }

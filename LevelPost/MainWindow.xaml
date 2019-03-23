@@ -37,6 +37,21 @@
                     <Label Content="Bundle prefix" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5" Visibility="Hidden"/>
                 </Grid>
             </TabItem>
+            <TabItem Header="Reflection Probes" TabIndex="2">
+                <Grid Background="#FFE5E5E5">
+                    <Label Content="Default Probes" HorizontalAlignment="Left" Margin="10,14,0,0" VerticalAlignment="Top" Width="103" Padding="0,5,5,5"/>
+                    <RadioButton x:Name="DefaultProbes_Keep" Content="Keep" HorizontalAlignment="Left" Margin="182,20,0,0" VerticalAlignment="Top" IsChecked="True" Width="120" GroupName="DefaultProbes" Click="Field_Click" />
+                    <RadioButton x:Name="DefaultProbes_ForceOn" Content="Force always on" HorizontalAlignment="Left" Margin="307,20,0,0" VerticalAlignment="Top" Height="15" Width="120" RenderTransformOrigin="0.76,0.667" GroupName="DefaultProbes" Click="Field_Click" />
+                    <RadioButton x:Name="DefaultProbes_Remove" Content="Remove all" HorizontalAlignment="Left" Margin="432,20,0,0" VerticalAlignment="Top" Width="120" GroupName="DefaultProbes" Click="Field_Click" />
+                    <CheckBox x:Name="BoxLavaNormalProbe" Content="Convert Box Lava Normal trigger to custom Reflection Probe" HorizontalAlignment="Left" Margin="182,46,0,0" VerticalAlignment="Top" RenderTransformOrigin="-0.282,-0.333" Click="Field_Click"/>
+                    <Label Content="Resolution" HorizontalAlignment="Left" Margin="10,69,0,0" VerticalAlignment="Top" Width="103" Padding="0,5,5,5"/>
+                    <RadioButton x:Name="ProbeRes_128" Content="128" HorizontalAlignment="Left" Margin="182,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click"/>
+                    <RadioButton x:Name="ProbeRes_256" Content="256" HorizontalAlignment="Left" Margin="267,75,0,0" VerticalAlignment="Top" Height="15" Width="80" IsChecked="True" GroupName="ProbeRes" Click="Field_Click" />
+                    <RadioButton x:Name="ProbeRes_512" Content="512" HorizontalAlignment="Left" Margin="352,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click" />
+                    <RadioButton x:Name="ProbeRes_1024" Content="1024" HorizontalAlignment="Left" Margin="437,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click" />
+                    <RadioButton x:Name="ProbeRes_2048" Content="2048" HorizontalAlignment="Left" Margin="522,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click" />
+                </Grid>
+            </TabItem>
             <TabItem Header="Material" TabIndex="2" IsEnabled="False" Visibility="Collapsed">
                 <Grid Background="#FFE5E5E5">
                     <Grid.ColumnDefinitions>
@@ -76,11 +91,11 @@
                         <TextBox x:Name="TexDir1" HorizontalAlignment="Left" Height="23" Margin="132,35,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="571" TextChanged="TextChanged" TabIndex="10"/>
                         <Label Content="Extra texture directory" HorizontalAlignment="Left" Margin="1,32,0,0" VerticalAlignment="Top" Width="126" Padding="0,5,5,5"/>
                         <Button x:Name="TexDirBtn1" Content="Select" HorizontalAlignment="Left" Height="22" Margin="708,36,0,0" VerticalAlignment="Top" Width="50" Click="DirButton_Click" TabIndex="11"/>
-                        <CheckBox x:Name="DebugOptions" Content="Enable debug options" HorizontalAlignment="Left" Margin="132,71,0,0" VerticalAlignment="Top" RenderTransformOrigin="-0.282,-0.333" Click="DebugOptions_Click"/>
+                        <CheckBox x:Name="DebugOptions" Content="Enable debug options" HorizontalAlignment="Left" Margin="132,71,0,0" VerticalAlignment="Top" RenderTransformOrigin="-0.282,-0.333" Click="Field_Click"/>
                         <Label Content="Blocky textures if" HorizontalAlignment="Left" Margin="1,99,0,0" VerticalAlignment="Top" Width="126" Padding="0,5,5,5"/>
                         <TextBox x:Name="TexPointPx" HorizontalAlignment="Left" Height="23" Margin="132,102,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="35" TextChanged="TextChanged" TabIndex="10" PreviewTextInput="TexPointPx_PreviewTextInput"/>
                         <Label Content="pixels or lower (0=off)" HorizontalAlignment="Left" Margin="172,99,0,0" VerticalAlignment="Top" Width="126" Padding="0,5,5,5" RenderTransformOrigin="1.833,0.615"/>
-                        <CheckBox x:Name="DoneBeep" Content="Play beep after conversion" HorizontalAlignment="Left" Margin="132,140,0,0" VerticalAlignment="Top" RenderTransformOrigin="-0.282,-0.333" Click="DoneBeep_Click"/>
+                        <CheckBox x:Name="DoneBeep" Content="Play beep after conversion" HorizontalAlignment="Left" Margin="132,140,0,0" VerticalAlignment="Top" RenderTransformOrigin="-0.282,-0.333" Click="Field_Click"/>
                     </Grid>
                 </Grid>
             </TabItem>
@@ -90,7 +105,7 @@
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
                     <Image HorizontalAlignment="Left" Height="100" Margin="10,10,50,0" VerticalAlignment="Top" Width="100" Source="icon128.png"/>
-                    <Label x:Name="LblVersion" Content="LevelPost 2019.02.19" HorizontalAlignment="Left" Margin="115,10,0,0" VerticalAlignment="Top" Width="182"/>
+                    <Label x:Name="LblVersion" Content="LevelPost 2019.03.23" HorizontalAlignment="Left" Margin="115,10,0,0" VerticalAlignment="Top" Width="182"/>
                     <Label Content="Arne de Bruijn" HorizontalAlignment="Left" Margin="115,62,0,0" VerticalAlignment="Top"/>
                     <Label x:Name="AboutLink" Content="https://www.arnedebruijn.nl/levelpost" HorizontalAlignment="Left" Margin="115,88,0,0" VerticalAlignment="Top" Cursor="Hand" Foreground="#FF0000EE" MouseUp="AboutLinkClick" TabIndex="12" IsTabStop="True" Focusable="True" KeyDown="AboutLink_KeyDown"/>
                     <Label Content="This is an unrelated, unsupported tool. Use at your own risk!" HorizontalAlignment="Left" Margin="115,114,0,0" VerticalAlignment="Top" Width="502"/>
