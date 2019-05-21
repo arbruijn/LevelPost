@@ -652,6 +652,10 @@ namespace LevelPost
         }
         public bool IsChanged()
         {
+            return stats.delProbes != 0 || stats.hiddenProbes != 0 || stats.convertedProbes != 0 || stats.changedProbes != 0;
+        }
+        public void Finish(List<object[]> ncmds)
+        {
             if (stats.delProbes != 0)
                 log("Removed " + stats.delProbes + " default reflection probe" + (stats.delProbes != 1 ? "s" : ""));
             if (stats.hiddenProbes != 0)
@@ -660,10 +664,6 @@ namespace LevelPost
                 log("Converted " + stats.convertedProbes + " triggers to reflection probe" + (stats.convertedProbes != 1 ? "s" : ""));
             if (stats.changedProbes != 0)
                 log("Changed " + stats.changedProbes + " reflection probe" + (stats.changedProbes != 1 ? "s" : ""));
-            return stats.delProbes != 0 || stats.hiddenProbes != 0 || stats.convertedProbes != 0 || stats.changedProbes != 0;
-        }
-        public void Finish(List<object[]> ncmds)
-        {
         }
     }
 
