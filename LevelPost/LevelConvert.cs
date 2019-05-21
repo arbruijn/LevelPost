@@ -35,7 +35,7 @@ namespace LevelPost
         public string bundleName;
         //public string bundlePrefix;
         public int texPointPx;
-        public HashSet<string> bundleMaterials;
+        public Dictionary<string, string> bundleMaterials;
         public HashSet<string> bundleGameObjects;
         public bool defaultProbeRemove;
         public bool defaultProbeHide;
@@ -284,23 +284,11 @@ namespace LevelPost
             this.settings = settings;
         }
 
-        private static string FmtCount(int n, string singular, string plural)
-        {
-            return n + " " + (n == 1 ? singular : plural);
-        }
-
         public Guid GetGuid(List<object[]> newCmds)
         {
             // Load material from asset bundle
             if (bundle == Guid.Empty) {
                 bundle = Guid.NewGuid();
-                var parts = new List<string>();
-                if (settings.bundleMaterials != null && settings.bundleMaterials.Count != 0)
-                    parts.Add(FmtCount(settings.bundleMaterials.Count, "material", "materials"));
-                if (settings.bundleGameObjects != null && settings.bundleGameObjects.Count != 0)
-                    parts.Add(FmtCount(settings.bundleGameObjects.Count, "entity", "entities"));
-                log("Using bundle " + Path.Combine(settings.bundleDir, "windows", settings.bundleName) +
-                    (parts.Count != 0 ? " (" + String.Join(", ", parts) + ")" : ""));
                 newCmds.Add(new object[]{VT.CmdLoadAssetBundle, settings.bundleDir, settings.bundleName, bundle });
             }
             return bundle;
@@ -333,9 +321,9 @@ namespace LevelPost
                 var matGuid = (Guid)cmd[1];
                 string texName = (string)cmd[3];
 
-                if (settings.bundleMaterials.Contains(texName))
+                if (settings.bundleMaterials.TryGetValue(texName.ToLowerInvariant(), out string matName))
                 {
-                    newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, cmd[3] + ".mat", bunRef.GetGuid(newCmds), matGuid});
+                    newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, matName + ".mat", bunRef.GetGuid(newCmds), matGuid});
 
                     stats.convertedTextures++;
                     stats.totalTextures++;

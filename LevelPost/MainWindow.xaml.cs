@@ -9,6 +9,7 @@ using Microsoft.Win32;
 //using Microsoft.WindowsAPICodePack.Dialogs;
 using System.Timers;
 using System.Media;
+using System.Linq;
 
 namespace LevelPost
 {
@@ -260,6 +261,11 @@ namespace LevelPost
             }
         }
 
+        private static string FmtCount(int n, string singular, string plural)
+        {
+            return n + " " + (n == 1 ? singular : plural);
+        }
+
         private void ConvertCurrent(bool isAuto)
         {
             AddMessage(null);
@@ -343,6 +349,17 @@ namespace LevelPost
                 settings.bundleDir = f.Parent.Parent.Name;
                 settings.bundleMaterials = info.materials;
                 settings.bundleGameObjects = info.gameObjects;
+
+                var parts = new List<string>();
+                int n;
+                if (settings.bundleMaterials != null && (n = settings.bundleMaterials.Count) != 0)
+                    parts.Add(FmtCount(n, "material", "materials") +
+                        " (" + string.Join(", ", settings.bundleMaterials.Keys.Take(5)) + (n > 5 ? ", ..." : "") + ")");
+                if (settings.bundleGameObjects != null && (n = settings.bundleGameObjects.Count) != 0)
+                    parts.Add(FmtCount(n, "entity", "entities"));
+                AddMessage("Using bundle " + Path.Combine(settings.bundleDir, "windows", settings.bundleName) +
+                    (parts.Count != 0 ? ": " + String.Join(", ", parts) : ", but no materials or entities found!"));
+
                 string levelDir = new DirectoryInfo(filename).Parent.FullName;
                 if (!f.Parent.Parent.Parent.FullName.Equals(levelDir, StringComparison.OrdinalIgnoreCase))
                 {

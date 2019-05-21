@@ -86,7 +86,7 @@ namespace LevelPost
     {
         public string path;
         public UInt64 lastWriteTime;
-        public HashSet<string> materials;
+        public Dictionary<string, string> materials;
         public HashSet<string> gameObjects;
     }
 
@@ -135,7 +135,9 @@ namespace LevelPost
                 return info;
             info.lastWriteTime = lastWriteTime;
             BundleFile.ReadBundleFile(path, out List<string> materials, out List<string> gameObjects);
-            info.materials = new HashSet<string>(materials);
+            info.materials = new Dictionary<string,string>();
+            foreach (var material in materials)
+                info.materials.Add(material.ToLowerInvariant(), material);
             info.gameObjects = new HashSet<string>();
             foreach (var gameObject in gameObjects)
                 if (gameObject.StartsWith("entity_"))
