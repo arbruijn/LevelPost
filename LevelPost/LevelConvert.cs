@@ -69,7 +69,6 @@ namespace LevelPost
             this.log = log;
             this.stats = stats;
 
-            var compObj = new Dictionary<Guid, Guid>();
             foreach (var cmd in cmds)
                 if ((VT)cmd[0] == VT.CmdAssetRegisterMaterial)
                     matNames.Add((Guid)cmd[1], (string)cmd[3]);
@@ -213,7 +212,6 @@ namespace LevelPost
                 var texCmd = MakeTexCmd(texName, texGuid, out bool blocky);
                 if (texCmd == null)
                     return false;
-                newCmds.Add(texCmd);
 
                 /*
                 // Load material from asset bundle
@@ -248,12 +246,12 @@ namespace LevelPost
                 // which creates default green material with simple Diffuse shader,
                 // and change material properties to our texture. Diffuse shader only has _MainTex :(
                 newCmds.Add(new object[] { VT.CmdAssetRegisterMaterial, matGuid, cmd[2], "$CT$:" + texName });
+                newCmds.Add(texCmd);
                 newCmds.Add(new object[] { VT.CmdMaterialSetTexture, matGuid, "_MainTex", texGuid });
                 var color = new object[] { VT.Color, 1.0f, 1.0f, 1.0f, 1.0f };
                 newCmds.Add(new object[] { VT.CmdMaterialSetColor, matGuid, "_Color", color });
 
                 stats.convertedTextures++;
-                stats.totalTextures++;
                 var msgOpts = new List<string>();
                 if (blocky)
                     msgOpts.Add("blocky");
@@ -301,12 +299,20 @@ namespace LevelPost
         private Action<string> log;
         private ConvertStats stats;
         public BunRef bunRef;
+        private HashSet<Guid> matRemoveCT = new HashSet<Guid>();
+        private Dictionary<Guid, Guid> texMatIds = new Dictionary<Guid, Guid>();
 
         public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
         {
             this.settings = settings;
             this.log = log;
             this.stats = stats;
+
+            foreach (var cmd in cmds)
+                if ((VT)cmd[0] == VT.CmdMaterialSetTexture &&
+                    (string)cmd[2] == "_MainTex")
+                    texMatIds.Add((Guid)cmd[3], (Guid)cmd[1]);
+
             return true;
         }
 
@@ -316,14 +322,33 @@ namespace LevelPost
                 stats.alreadyTextures++;
                 stats.totalTextures++;
             }
+
+            // 
+            if (((VT)cmd[0] == VT.CmdMaterialSetTexture || (VT)cmd[0] == VT.CmdMaterialSetColor) &&
+                matRemoveCT.Contains((Guid)cmd[1]))
+                return true;
+            if ((VT)cmd[0] == VT.CmdCreateTexture2D &&
+                texMatIds.TryGetValue((Guid)cmd[1], out Guid matId) &&
+                matRemoveCT.Contains(matId))
+                return true;
+
             if ((VT)cmd[0] == VT.CmdAssetRegisterMaterial)
             {
                 var matGuid = (Guid)cmd[1];
                 string texName = (string)cmd[3];
+                bool wasCT = false;
 
+                if (texName.StartsWith("$CT$:"))
+                {
+                    wasCT = true;
+                    texName = texName.Substring(5);
+                }
                 if (settings.bundleMaterials.TryGetValue(texName.ToLowerInvariant(), out string matName))
                 {
                     newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, matName + ".mat", bunRef.GetGuid(newCmds), matGuid});
+
+                    if (wasCT)
+                        matRemoveCT.Add(matGuid);
 
                     stats.convertedTextures++;
                     stats.totalTextures++;
