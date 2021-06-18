@@ -30,11 +30,13 @@
                         <ColumnDefinition Width="62*"/>
                         <ColumnDefinition Width="683*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="BunFile" HorizontalAlignment="Left" Height="23" Margin="76,13,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="TextChanged" TabIndex="4"/>
-                    <Label Content="Bundle file" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
-                    <Button x:Name="BunFileBtn" Content="Select" HorizontalAlignment="Left" Height="22" Margin="654,14,0,0" VerticalAlignment="Top" Width="48" Click="FileButton_Click" Grid.Column="1" TabIndex="5"/>
+                    <TextBox x:Name="BunFile" HorizontalAlignment="Left" Height="134" Margin="76,13,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="BunFile_TextChanged" TabIndex="4"/>
+                    <Label Content="Bundle files" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5"/>
+                    <Button x:Name="BunFileAddBtn" Content="Add" HorizontalAlignment="Left" Height="22" Margin="654,14,0,0" VerticalAlignment="Top" Width="48" Click="BunFileAddBtn_Click" Grid.Column="1" TabIndex="5"/>
                     <TextBox x:Name="BunPrefix" HorizontalAlignment="Left" Height="23" Margin="76,44,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="573" Grid.Column="1" TextChanged="TextChanged" TabIndex="4" Visibility="Hidden"/>
                     <Label Content="Bundle prefix" HorizontalAlignment="Left" Margin="10,41,0,0" VerticalAlignment="Top" Width="126" Grid.ColumnSpan="2" Padding="0,5,5,5" Visibility="Hidden"/>
+                    <Button x:Name="BunFileClearBtn" Content="Clear" HorizontalAlignment="Left" Height="22" Margin="654,41,0,0" VerticalAlignment="Top" Width="48" Grid.Column="1" TabIndex="5" RenderTransformOrigin="0.438,2.182" Click="BunFileClearBtn_Click"/>
+                    <Label x:Name="BunStatus" Content="" Grid.Column="1" HorizontalAlignment="Left" Margin="76,157,0,0" VerticalAlignment="Top" Width="573" Padding="1"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Reflection Probes" TabIndex="2">

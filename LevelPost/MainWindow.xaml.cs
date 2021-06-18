@@ -63,6 +63,9 @@ namespace LevelPost
         {
             InitializeComponent();
 
+            bundleFiles = new BundleFiles();
+            bundleFiles.Logger = AddMessage;
+
             updating = true;
             using (var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\ArneDeBruijn\LevelPost"))
             {
@@ -118,8 +121,6 @@ namespace LevelPost
             updating = false;
             UpdateAll();
 
-            bundleFiles = new BundleFiles();
-            bundleFiles.Logger = AddMessage;
             /*
             bf.ScanBundles(GetCustomLevelDir());
             var bs = bf.Bundles.Keys.ToArray();
@@ -166,14 +167,120 @@ namespace LevelPost
             return Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) + @"\Revival\Overload";
         }
 
-        private void FileButton_Click(object sender, RoutedEventArgs e)
-        {
-            string btnName = ((Button)sender).Name;
-            TextBox textBox = (TextBox)this.FindName(btnName.Substring(0, btnName.Length - 3)); // strip Btn
+        private string BunLastDir;
 
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            if (textBox.Text.Length != 0) {
-                var info = new DirectoryInfo(textBox.Text);
+        private List<string> ListCleanup(List<string> items)
+        {
+            var ret = new List<string>();
+            foreach (var item in items.Select(s => s.Trim()).Where(s => s != ""))
+                if (!ret.Contains(item, StringComparer.OrdinalIgnoreCase))
+                    ret.Add(item);
+            return ret;
+        }
+
+        private List<string> BundlesGet()
+        {
+            return ListCleanup(BunFile.Text.Split(new char[] { '\n', '\r', '\t' }).ToList());
+        }
+
+        private static string MsgAddFilename(string msg, string filename)
+        {
+            if (!string.IsNullOrEmpty(filename) && !msg.StartsWith(filename + ": "))
+                msg = filename + ": " + msg;
+            return msg;
+        }
+
+        private bool scanAgain, scanActive, scanAgainShowErrors, scanAgainUpdateList;
+        private object scanLock = new Object();
+
+        private void BundlesScan(List<string> lines, bool showErrors, bool updateList)
+        {
+            lock (scanLock)
+            {
+                if (scanActive)
+                {
+                    scanAgain = true;
+                    scanAgainShowErrors = scanAgainShowErrors | showErrors;
+                    scanAgainUpdateList = scanAgainUpdateList | updateList;
+                    return;
+                }
+                scanAgain = false;
+                scanActive = true;
+                scanAgainShowErrors = scanAgainUpdateList = false;
+            }
+            new Task(() => {
+                for (;;)
+                {
+                    var err = new List<string>();
+                    var ok = new List<string>();
+                    int totalMat = 0, totalEnt = 0;
+                    foreach (var filename in lines)
+                    {
+                        try
+                        {
+                            var info = bundleFiles.CachedBundleInfo(filename);
+                            if (!info.materials.Any() && !info.gameObjects.Any())
+                                err.Add(filename + ": No materials or entities found.");
+                            else
+                            {
+                                ok.Add(filename);
+                                totalMat += info.materials.Count;
+                                totalEnt += info.gameObjects.Count;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            err.Add(MsgAddFilename(ex.Message, filename));
+                        }
+                    }
+                    if (err.Any() && showErrors)
+                        if (err.Count == 1)
+                            MessageBox.Show("Error adding bundle file:\n\n" + err[0].Substring(0, err[0].IndexOf(": ")) + "\n\n" + err[0].Substring(err[0].IndexOf(": ") + 2), "Bundle Files", MessageBoxButton.OK, MessageBoxImage.Error);
+                        else
+                            MessageBox.Show("Not all files could be added:\n\n" + string.Join("\n\n", err), "Bundle Files", MessageBoxButton.OK, MessageBoxImage.Error);
+                    Dispatcher.Invoke(() => {
+                        BunStatus.Content =
+                            err.Any() && !showErrors ?
+                                err.Count == 1 ? err[0] : "Cannot load " + err.Count + " bundle files" :
+                            ok.Any() ? "Loaded " + FmtCount(ok.Count, "bundle") + " with " + FmtCount(totalMat, "material") + " and " + FmtCount(totalEnt, "entity", "entities") + "." : "";
+                    });
+                    if (updateList)
+                    {
+                        Dispatcher.Invoke(() => {
+                            BunFile.Text = string.Join("\n", ok);
+                            UpdateAll();
+                        });
+                    }
+                    lock (scanLock)
+                    {
+                        if (!scanAgain)
+                        {
+                            scanActive = false;
+                            return;
+                        }
+                        showErrors = scanAgainShowErrors;
+                        updateList = scanAgainUpdateList;
+                        scanAgain = false;
+                        scanAgainShowErrors = scanAgainUpdateList = false;
+                    }
+                 }
+            }).Start();
+        }
+
+        private void BundlesSet(List<string> lines)
+        {
+            lines = ListCleanup(lines);
+            if (lines.SequenceEqual(BundlesGet()))
+                return;
+            BunStatus.Content = "Loading...";
+            BundlesScan(lines, true, true);
+        }
+
+        private void OFDSetInitDir(OpenFileDialog openFileDialog, string filename, string lastDir, string defaultDir)
+        {
+            if (!string.IsNullOrEmpty(filename))
+            {
+                var info = new DirectoryInfo(filename);
                 if (info.Attributes.HasFlag(FileAttributes.Directory))
                 {
                     openFileDialog.InitialDirectory = info.FullName;
@@ -184,10 +291,39 @@ namespace LevelPost
                     openFileDialog.FileName = info.Name;
                 }
             }
+            else if (!string.IsNullOrEmpty(lastDir))
+            {
+                openFileDialog.InitialDirectory = lastDir;
+            }
             else
             {
                 openFileDialog.InitialDirectory = GetCustomLevelDir();
             }
+        }
+
+        private void BundlesAdd() {
+            var lines = BundlesGet();
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Multiselect = true;
+            OFDSetInitDir(openFileDialog, lines.LastOrDefault(), BunLastDir, GetCustomLevelDir());
+
+            if (openFileDialog.ShowDialog() == true) {
+                BunLastDir = new DirectoryInfo(openFileDialog.FileName).Parent.FullName;
+                lines = BundlesGet();
+                foreach (var filename in openFileDialog.FileNames)
+                    if (!lines.Contains(filename, StringComparer.OrdinalIgnoreCase))
+                        lines.Add(filename);
+                BundlesSet(lines);
+            }
+        }
+
+        private void FileButton_Click(object sender, RoutedEventArgs e)
+        {
+            string btnName = ((Button)sender).Name;
+            TextBox textBox = (TextBox)this.FindName(btnName.Substring(0, btnName.Length - 3)); // strip Btn
+
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            OFDSetInitDir(openFileDialog, textBox.Text, null, GetCustomLevelDir());
 
             if (openFileDialog.ShowDialog() == true) {
 				textBox.Text = openFileDialog.FileName;
@@ -262,9 +398,47 @@ namespace LevelPost
             }
         }
 
-        private static string FmtCount(int n, string singular, string plural)
+        private static string FmtCount(int n, string singular, string plural = null)
         {
-            return n + " " + (n == 1 ? singular : plural);
+            return n + " " + (n == 1 ? singular : plural == null ? singular + "s" : plural);
+        }
+
+        private static void DictListAdd<TKey, TValue>(Dictionary<TKey, List<TValue>> d, TKey key, TValue value)
+        {
+            if (!d.TryGetValue(key, out List<TValue> l))
+                d.Add(key, l = new List<TValue>());
+            l.Add(value);
+        }
+
+        private static string ToTitleCase(string s)
+        {
+            return s.Substring(0, 1).ToUpper() + s.Substring(1);
+        }
+
+        private static string FmtList(IEnumerable<string> items, int max)
+        {
+            var list = items.Take(max + 1).ToList();
+            int count = list.Count;
+            if (count == 0)
+                return "";
+            if (count == 1)
+                return list[0];
+            if (count > max)
+                return string.Join(", ", list.GetRange(0, max)) + ", ...";
+            return string.Join(", ", list.GetRange(0, count - 1)) + " and " + list[count - 1];
+        }
+
+        private void ShowDups(Dictionary<string, List<ConvertBundle>> d, string singular, string plural)
+        {
+            var dups = d.Where(x => x.Value.Count > 1).ToList();
+            if (!dups.Any())
+                return;
+            if (dups.Count == 1)
+                AddMessage("Warning: " + singular + " " + dups[0].Key + " occurs in " + dups[1].Value.Count + " bundles: " + 
+                    FmtList(dups[1].Value.Select(x => x.BundleName), 5));
+            else
+                AddMessage("Warning: " + dups.Count + " " + plural + " occur in multiple bundles: " +
+                    FmtList(dups.Select(x => x.Key), 10));
         }
 
         private void ConvertCurrent(bool isAuto)
@@ -330,9 +504,11 @@ namespace LevelPost
               if (((RadioButton)FindName("ProbeRes_" + res)).IsChecked.Value)
                 settings.probeRes = res;
 
-            if (!BunFile.Text.Equals(""))
+            var paths = BundlesGet();
+            var dupMats = new Dictionary<string, List<ConvertBundle>>(StringComparer.OrdinalIgnoreCase);
+            var dupGOs = new Dictionary<string, List<ConvertBundle>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var path in paths)
             {
-                string path = BunFile.Text;
                 BundleInfo info;
                 try
                 {
@@ -340,34 +516,44 @@ namespace LevelPost
                 }
                 catch (Exception ex)
                 {
-                    AddMessage("Error: cannot read bundle file: " + ex.Message);
+                    AddMessage("Error: cannot read bundle file: " + MsgAddFilename(ex.Message, paths.Count == 1 ? null : path));
                     return;
                 }
-                //if (!BunPrefix.Text.Equals(""))
-                //    settings.bundlePrefix = BunPrefix.Text;
+
                 var f = new DirectoryInfo(path);
-                settings.bundleName = f.Name;
-                settings.bundleDir = f.Parent.Parent.Name;
-                settings.bundleMaterials = info.materials;
-                settings.bundleGameObjects = info.gameObjects;
+                var convBun = new ConvertBundle() {
+                    Name = f.Name,
+                    OS = f.Parent.Name,
+                    Dir = f.Parent.Parent.Name, 
+                    Materials = info.materials,
+                    GameObjects = info.gameObjects
+                    };
+                settings.bundles.Add(convBun);
+                foreach (var mat in convBun.Materials)
+                    DictListAdd(dupMats, mat.Key, convBun);
+                foreach (var go in convBun.GameObjects)
+                    DictListAdd(dupGOs, go, convBun);
 
                 var parts = new List<string>();
                 int n;
-                if (settings.bundleMaterials != null && (n = settings.bundleMaterials.Count) != 0)
+                if (convBun.Materials != null && (n = convBun.Materials.Count) != 0)
                     parts.Add(FmtCount(n, "material", "materials") +
-                        " (" + string.Join(", ", settings.bundleMaterials.Keys.Take(5)) + (n > 5 ? ", ..." : "") + ")");
-                if (settings.bundleGameObjects != null && (n = settings.bundleGameObjects.Count) != 0)
+                        " (" + string.Join(", ", convBun.Materials.Keys.Take(5)) + (n > 5 ? ", ..." : "") + ")");
+                if (convBun.GameObjects != null && (n = convBun.GameObjects.Count) != 0)
                     parts.Add(FmtCount(n, "entity", "entities"));
-                AddMessage("Using bundle " + Path.Combine(settings.bundleDir, "windows", settings.bundleName) +
+                AddMessage("Using bundle " + convBun.BundleName +
                     (parts.Count != 0 ? ": " + String.Join(", ", parts) : ", but no materials or entities found!"));
 
                 string levelDir = new DirectoryInfo(filename).Parent.FullName;
-                if (!f.Parent.Parent.Parent.FullName.Equals(levelDir, StringComparison.OrdinalIgnoreCase))
+				var bundleLevelDir = f.Parent?.Parent?.Parent;
+                if (bundleLevelDir == null || !bundleLevelDir.FullName.Equals(levelDir, StringComparison.OrdinalIgnoreCase))
                 {
                     AddMessage("Warning: the bundle file is not in correct subdirectory of the level file!");
-                    AddMessage("The bundle file must be at " + Path.Combine(levelDir, settings.bundleDir, "windows", settings.bundleName));
+                    AddMessage("The bundle file must be at " + Path.Combine(levelDir, convBun.BundleName));
                 }
             }
+            ShowDups(dupMats, "material", "materials");
+            ShowDups(dupGOs, "entity", "entities");
 
             new Task(() => Convert(filename, settings)).Start();
         }
@@ -507,9 +693,25 @@ namespace LevelPost
             UpdateAll();
         }
 
+        private void BunFile_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            TextChanged(sender, e);
+            BundlesScan(BundlesGet(), false, false);
+        }
+
         private void TexPointPx_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             e.Handled = e.Text.CompareTo("0") >= 0 && e.Text.CompareTo("9") <= 0;
+        }
+
+        private void BunFileAddBtn_Click(object sender, RoutedEventArgs e)
+        {
+            BundlesAdd();
+        }
+
+        private void BunFileClearBtn_Click(object sender, RoutedEventArgs e)
+        {
+            BundlesSet(new List<string>());
         }
     }
 }
