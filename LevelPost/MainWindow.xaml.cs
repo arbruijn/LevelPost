@@ -475,13 +475,12 @@ namespace LevelPost
             string filename = LvlFile.Text;
             DumpBtn.IsEnabled = false;
             new Task(() => {
-                var lines = new List<string>();
+                List<string> lines;
                 AddMessage(null);
                 AddMessage("Dumping " + filename);
                 try
                 {
-                    foreach (var cmd in LevelFile.ReadLevel(filename).cmds)
-                        lines.Add(LevelFile.FmtCmd(cmd));
+                    lines = LevelDump.DumpLines(filename);
                 }
                 catch (Exception ex)
                 {
