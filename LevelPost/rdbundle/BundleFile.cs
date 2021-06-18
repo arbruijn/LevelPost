@@ -81,7 +81,10 @@ namespace rdbundle
                 }
             }
             else
-                throw new Exception("Unknown header " + header);
+                throw new Exception("Unknown header: " +
+                    (header[0] > 'A' && header[0] < 'Z' ?
+                        header.Substring(0, 8) :
+                        string.Join(" ", header.Substring(0, 8).ToCharArray().Select(c => ((int)c).ToString("X2")))));
         }
 
         class FilePtr
