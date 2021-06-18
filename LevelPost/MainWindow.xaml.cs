@@ -119,6 +119,7 @@ namespace LevelPost
             UpdateAll();
 
             bundleFiles = new BundleFiles();
+            bundleFiles.Logger = AddMessage;
             /*
             bf.ScanBundles(GetCustomLevelDir());
             var bs = bf.Bundles.Keys.ToArray();

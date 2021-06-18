@@ -94,6 +94,8 @@ namespace LevelPost
     {
 
         public Dictionary<string, BundleInfo> Bundles = new Dictionary<string, BundleInfo>();
+        public Action<string> Logger;
+
         public void ScanBundles(string baseDir)
         {
             var dirs = new Stack<string>();
@@ -137,7 +139,10 @@ namespace LevelPost
             BundleFile.ReadBundleFile(path, out List<string> materials, out List<string> gameObjects);
             info.materials = new Dictionary<string,string>();
             foreach (var material in materials)
-                info.materials.Add(material.ToLowerInvariant(), material);
+                if (info.materials.ContainsKey(material.ToLowerInvariant()))
+                    Logger("WARNING: Bundle " + path + " contains multiple versions of " + material);
+                else
+                    info.materials.Add(material.ToLowerInvariant(), material);
             info.gameObjects = new HashSet<string>();
             foreach (var gameObject in gameObjects)
                 if (gameObject.StartsWith("entity_"))
