@@ -12,7 +12,7 @@ using System.Windows;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("LevelPost")]
-[assembly: AssemblyCopyright("Arne de Bruijn, 2019")]
+[assembly: AssemblyCopyright("Arne de Bruijn, 2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -51,5 +51,5 @@ using System.Windows;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.2019.0522.0")]
+[assembly: AssemblyVersion("1.2021.0618.0")]
 //[assembly: AssemblyFileVersion("1.0.0.0")]

@@ -107,7 +107,7 @@
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
                     <Image HorizontalAlignment="Left" Height="100" Margin="10,10,50,0" VerticalAlignment="Top" Width="100" Source="icon128.png"/>
-                    <Label x:Name="LblVersion" Content="LevelPost 2019.05.22" HorizontalAlignment="Left" Margin="115,10,0,0" VerticalAlignment="Top" Width="182"/>
+                    <Label x:Name="LblVersion" Content="LevelPost 2021.06.18" HorizontalAlignment="Left" Margin="115,10,0,0" VerticalAlignment="Top" Width="182"/>
                     <Label Content="Arne de Bruijn" HorizontalAlignment="Left" Margin="115,62,0,0" VerticalAlignment="Top"/>
                     <Label x:Name="AboutLink" Content="https://www.arnedebruijn.nl/levelpost" HorizontalAlignment="Left" Margin="115,88,0,0" VerticalAlignment="Top" Cursor="Hand" Foreground="#FF0000EE" MouseUp="AboutLinkClick" TabIndex="12" IsTabStop="True" Focusable="True" KeyDown="AboutLink_KeyDown"/>
                     <Label Content="This is an unrelated, unsupported tool. Use at your own risk!" HorizontalAlignment="Left" Margin="115,114,0,0" VerticalAlignment="Top" Width="502"/>
