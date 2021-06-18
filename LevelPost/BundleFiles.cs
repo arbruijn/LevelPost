@@ -145,7 +145,7 @@ namespace LevelPost
                     info.materials.Add(material.ToLowerInvariant(), material);
             info.gameObjects = new HashSet<string>();
             foreach (var gameObject in gameObjects)
-                if (gameObject.StartsWith("entity_"))
+                if (gameObject.StartsWith("entity_", StringComparison.OrdinalIgnoreCase))
                     info.gameObjects.Add(gameObject);
             return info;
         }
