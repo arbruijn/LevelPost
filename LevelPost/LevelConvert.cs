@@ -409,12 +409,12 @@ namespace LevelPost
         public BunRef bunRef;
         private readonly Dictionary<Guid, int> objIdx = new Dictionary<Guid, int>();
         private readonly Dictionary<Guid, string> prefabNames = new Dictionary<Guid, string>();
-        private readonly Dictionary<string, Guid> newPrefabIds = new Dictionary<string, Guid>();
-        private readonly Dictionary<string, string> prefabConvNames = new Dictionary<string, string>()
+        private readonly Dictionary<string, Guid> newPrefabIds = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> prefabConvNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             { { "entity_PROP_N0000_MINE", "entity_mine" } };
         private readonly HashSet<Guid> convObj = new HashSet<Guid>();
         private readonly HashSet<Guid> convComp = new HashSet<Guid>();
-        private readonly HashSet<string> unconvPrefabs= new HashSet<string>();
+        private readonly HashSet<string> unconvPrefabs= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
         {
@@ -513,12 +513,7 @@ namespace LevelPost
         private readonly Dictionary<Guid, int> objRptDelay = new Dictionary<Guid, int>();
         private readonly Dictionary<Guid, int> objImportance = new Dictionary<Guid, int>();
         private readonly Dictionary<Guid, string> prefabNames = new Dictionary<Guid, string>();
-        private readonly Dictionary<string, Guid> newPrefabIds = new Dictionary<string, Guid>();
-        private readonly Dictionary<string, string> prefabConvNames = new Dictionary<string, string>()
-            { { "entity_PROP_N0000_MINE", "entity_mine" } };
         private readonly HashSet<Guid> RemoveObj = new HashSet<Guid>();
-        private readonly HashSet<Guid> convComp = new HashSet<Guid>();
-        private readonly HashSet<string> unconvPrefabs = new HashSet<string>();
         private readonly Dictionary<Guid, Guid> compObj = new Dictionary<Guid, Guid>();
 
         public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)

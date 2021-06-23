@@ -137,13 +137,13 @@ namespace LevelPost
                 return info;
             info.lastWriteTime = lastWriteTime;
             BundleFile.ReadBundleFile(path, out List<string> materials, out List<string> gameObjects);
-            info.materials = new Dictionary<string,string>();
+            info.materials = new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
             foreach (var material in materials)
                 if (info.materials.ContainsKey(material.ToLowerInvariant()))
                     Logger("WARNING: Bundle " + path + " contains multiple versions of " + material);
                 else
                     info.materials.Add(material.ToLowerInvariant(), material);
-            info.gameObjects = new HashSet<string>();
+            info.gameObjects = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var gameObject in gameObjects)
                 if (gameObject.StartsWith("entity_", StringComparison.OrdinalIgnoreCase))
                     info.gameObjects.Add(gameObject);
