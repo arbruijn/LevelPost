@@ -58,7 +58,7 @@ namespace LevelPost
         /// </summary>
         BoxLavaNormal,
         /// <summary>
-        /// Remove the default probes and convert Box Lava Alient triggers to reflection probes.
+        /// Remove the default probes and convert Box Lava Alien triggers to reflection probes.
         /// </summary>
         BoxLavaAlien,
     }
@@ -78,7 +78,6 @@ namespace LevelPost
         public List<string> ignoreTexDirs;
         //public string bundlePrefix;
         public int texPointPx;
-        public HashSet<string> bundleAudioClips;
         public ReflectionProbeHandling probeHandling;
         public bool boxLavaProbeOneTimeOnly;
         public int probeRes;
