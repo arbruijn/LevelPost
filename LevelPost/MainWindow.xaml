@@ -6,31 +6,6 @@
         xmlns:local="clr-namespace:LevelPost"
         mc:Ignorable="d"
         Title="LevelPost" Height="459.26" Width="813.795" Icon="icon128.png">
-    <Window.Resources>
-        <ObjectDataProvider x:Key="ReflectionProbeHandling" MethodName="Get" ObjectType="{x:Type local:ReflectionProbeHandlingValues}">
-        </ObjectDataProvider>
-
-        <DataTemplate x:Key="ReflectionProbeDisplay">
-            <TextBlock x:Name="Text" Text="{Binding Path=.}"></TextBlock>
-            <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding Path=.}" Value="Keep">
-                    <Setter TargetName="Text" Property="Text" Value="Keep"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=.}" Value="Hide">
-                    <Setter TargetName="Text" Property="Text" Value="Force always on"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=.}" Value="Remove">
-                    <Setter TargetName="Text" Property="Text" Value="Remove All"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=.}" Value="BoxLavaNormal">
-                    <Setter TargetName="Text" Property="Text" Value="Replace by converting Box Lava Normal triggers"/>
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Path=.}" Value="BoxLavaAlien">
-                    <Setter TargetName="Text" Property="Text" Value="Replace by converting Box Lava Alien triggers"/>
-                </DataTrigger>
-            </DataTemplate.Triggers>
-        </DataTemplate>
-    </Window.Resources>
     <Grid>
         <TabControl Margin="10,10,8,8">
             <TabItem Header="Level" TabIndex="1">
@@ -64,19 +39,17 @@
             </TabItem>
             <TabItem Header="Reflection Probes" TabIndex="2">
                 <Grid Background="#FFE5E5E5">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="3*"/>
-                        <ColumnDefinition Width="31*"/>
-                    </Grid.ColumnDefinitions>
-                    <Label Content="Default Probes" HorizontalAlignment="Left" Margin="10,14,0,0" VerticalAlignment="Top" Width="103" Padding="0,5,5,5" Grid.ColumnSpan="2"/>
-                    <ComboBox x:Name="DefaultProbes_Menu" ItemsSource="{Binding Source={StaticResource ReflectionProbeHandling}}" ItemTemplate="{StaticResource ReflectionProbeDisplay}" HorizontalAlignment="Left" Margin="113.452,16,0,0" VerticalAlignment="Top" Width="Auto" SelectionChanged="DefaultProbes_Menu_SelectionChanged" Grid.Column="1"></ComboBox>
-                    <CheckBox x:Name="BoxLavaOneTimeProbe" Content="Convert only Box Lava triggers with OneTime set" HorizontalAlignment="Left" Margin="113.452,46,0,0" VerticalAlignment="Top" RenderTransformOrigin="-0.282,-0.333" Click="Field_Click" Grid.Column="1"/>
-                    <Label Content="Resolution" HorizontalAlignment="Left" Margin="10,69,0,0" VerticalAlignment="Top" Width="103" Padding="0,5,5,5" Grid.ColumnSpan="2"/>
-                    <RadioButton x:Name="ProbeRes_128" Content="128" HorizontalAlignment="Left" Margin="113.452,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click" Grid.Column="1"/>
-                    <RadioButton x:Name="ProbeRes_256" Content="256" HorizontalAlignment="Left" Margin="198.452,75,0,0" VerticalAlignment="Top" Height="15" Width="80" IsChecked="True" GroupName="ProbeRes" Click="Field_Click" Grid.Column="1" />
-                    <RadioButton x:Name="ProbeRes_512" Content="512" HorizontalAlignment="Left" Margin="283.452,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click" Grid.Column="1" />
-                    <RadioButton x:Name="ProbeRes_1024" Content="1024" HorizontalAlignment="Left" Margin="368.452,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click" Grid.Column="1" />
-                    <RadioButton x:Name="ProbeRes_2048" Content="2048" HorizontalAlignment="Left" Margin="453.452,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click" Grid.Column="1" />
+                    <Label Content="Default Probes" HorizontalAlignment="Left" Margin="10,14,0,0" VerticalAlignment="Top" Width="103" Padding="0,5,5,5"/>
+                    <RadioButton x:Name="DefaultProbes_Keep" Content="Keep" HorizontalAlignment="Left" Margin="182,20,0,0" VerticalAlignment="Top" IsChecked="True" Width="120" GroupName="DefaultProbes" Click="Field_Click" />
+                    <RadioButton x:Name="DefaultProbes_ForceOn" Content="Force always on" HorizontalAlignment="Left" Margin="307,20,0,0" VerticalAlignment="Top" Height="15" Width="120" RenderTransformOrigin="0.76,0.667" GroupName="DefaultProbes" Click="Field_Click" />
+                    <RadioButton x:Name="DefaultProbes_Remove" Content="Remove all" HorizontalAlignment="Left" Margin="432,20,0,0" VerticalAlignment="Top" Width="120" GroupName="DefaultProbes" Click="Field_Click" />
+                    <CheckBox x:Name="BoxLavaNormalProbe" Content="Convert Box Lava Normal trigger to custom Reflection Probe" HorizontalAlignment="Left" Margin="182,46,0,0" VerticalAlignment="Top" RenderTransformOrigin="-0.282,-0.333" Click="Field_Click"/>
+                    <Label Content="Resolution" HorizontalAlignment="Left" Margin="10,69,0,0" VerticalAlignment="Top" Width="103" Padding="0,5,5,5"/>
+                    <RadioButton x:Name="ProbeRes_128" Content="128" HorizontalAlignment="Left" Margin="182,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click"/>
+                    <RadioButton x:Name="ProbeRes_256" Content="256" HorizontalAlignment="Left" Margin="267,75,0,0" VerticalAlignment="Top" Height="15" Width="80" IsChecked="True" GroupName="ProbeRes" Click="Field_Click" />
+                    <RadioButton x:Name="ProbeRes_512" Content="512" HorizontalAlignment="Left" Margin="352,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click" />
+                    <RadioButton x:Name="ProbeRes_1024" Content="1024" HorizontalAlignment="Left" Margin="437,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click" />
+                    <RadioButton x:Name="ProbeRes_2048" Content="2048" HorizontalAlignment="Left" Margin="522,75,0,0" VerticalAlignment="Top" Width="80" GroupName="ProbeRes" Click="Field_Click" />
                 </Grid>
             </TabItem>
             <TabItem Header="Material" TabIndex="2" IsEnabled="False" Visibility="Collapsed">

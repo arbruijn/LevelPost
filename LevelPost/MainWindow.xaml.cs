@@ -90,36 +90,12 @@ namespace LevelPost
                         ((TextBox)FindName(prop)).Text = (string)key.GetValue(prop);
                     }
 
-                    DefaultProbes_Menu.SelectedItem = ReflectionProbeHandling.Keep;
-                    if ((int)key.GetValue("DefaultProbesForceOn", 0) != 0)
-                    {
-                        DefaultProbes_Menu.SelectedItem = ReflectionProbeHandling.Hide;
-                    }
-
-                    if ((int)key.GetValue("DefaultProbesRemove", 0) != 0)
-                    {
-                        DefaultProbes_Menu.SelectedItem = ReflectionProbeHandling.Remove;
-                    }
-
-                    // hacky extension of this reg value (flags):
-                    // 0: no effect
-                    // 1: convert box lava normal
-                    // 2: convert box lava alien
-                    // 4: convert only OneTime
-                    var boxLavaRegValue = (int)key.GetValue("BoxLavaNormalProbe", 0);
-                    BoxLavaOneTimeProbe.IsChecked = ((boxLavaRegValue & 4) != 0);
-                    if ((boxLavaRegValue & 2) != 0)
-                    {
-                        DefaultProbes_Menu.SelectedItem = ReflectionProbeHandling.BoxLavaAlien;
-                    }
-                    else if (boxLavaRegValue != 0)
-                    {
-                        DefaultProbes_Menu.SelectedItem = ReflectionProbeHandling.BoxLavaNormal;
-                    }
-
+                    DefaultProbes_ForceOn.IsChecked = (int)key.GetValue("DefaultProbesForceOn", 0) != 0;
+                    DefaultProbes_Remove.IsChecked = (int)key.GetValue("DefaultProbesRemove", 0) != 0;
                     int res = (int)key.GetValue("CustomProbeRes", 256);
                     if (Array.IndexOf(resArray, res) >= 0)
                         ((RadioButton)FindName("ProbeRes_" + res)).IsChecked = true;
+                    BoxLavaNormalProbe.IsChecked = (int)key.GetValue("BoxLavaNormalProbe", 0) != 0;
                 }
                 else
                 {
@@ -345,8 +321,9 @@ namespace LevelPost
                 texPointPx = texPointPx
             };
 
-            settings.probeHandling = (ReflectionProbeHandling)DefaultProbes_Menu.SelectedItem;
-            settings.boxLavaProbeOneTimeOnly = BoxLavaOneTimeProbe.IsChecked.Value;
+            settings.defaultProbeHide = DefaultProbes_ForceOn.IsChecked.Value;
+            settings.defaultProbeRemove = DefaultProbes_Remove.IsChecked.Value;
+            settings.boxLavaNormalProbe = BoxLavaNormalProbe.IsChecked.Value;
             settings.probeRes = 256;
             foreach (var res in resArray)
               if (((RadioButton)FindName("ProbeRes_" + res)).IsChecked.Value)
@@ -432,36 +409,9 @@ namespace LevelPost
             for (int i = 1; i <= texDirCount; i++)
                 key.SetValue("TexDir" + i.ToString(), ((TextBox)this.FindName("TexDir" + i.ToString())).Text);
 
-            switch((ReflectionProbeHandling)DefaultProbes_Menu.SelectedItem)
-            {
-                case ReflectionProbeHandling.Keep:
-                    key.SetValue("DefaultProbesForceOn", 0);
-                    key.SetValue("DefaultProbesRemove", 0);
-                    key.SetValue("BoxLavaNormalProbe", 0);
-                    break;
-                case ReflectionProbeHandling.Hide:
-                    key.SetValue("DefaultProbesForceOn", 1);
-                    key.SetValue("DefaultProbesRemove", 0);
-                    key.SetValue("BoxLavaNormalProbe", 0);
-                    break;
-                case ReflectionProbeHandling.Remove:
-                    key.SetValue("DefaultProbesForceOn", 0);
-                    key.SetValue("DefaultProbesRemove", 1);
-                    key.SetValue("BoxLavaNormalProbe", 0);
-                    break;
-                case ReflectionProbeHandling.BoxLavaNormal:
-                    key.SetValue("DefaultProbesForceOn", 0);
-                    key.SetValue("DefaultProbesRemove", 1);
-                    key.SetValue("BoxLavaNormalProbe", 1 + (BoxLavaOneTimeProbe.IsChecked == true ? 4 : 0));
-                    break;
-                case ReflectionProbeHandling.BoxLavaAlien:
-                    key.SetValue("DefaultProbesForceOn", 0);
-                    key.SetValue("DefaultProbesRemove", 1);
-                    key.SetValue("BoxLavaNormalProbe", 2 + (BoxLavaOneTimeProbe.IsChecked == true ? 4 : 0));
-                    break;
-                default:
-                    break;
-            }
+            key.SetValue("DefaultProbesForceOn", DefaultProbes_ForceOn.IsChecked == true ? 1 : 0);
+            key.SetValue("DefaultProbesRemove", DefaultProbes_Remove.IsChecked == true ? 1 : 0);
+            key.SetValue("BoxLavaNormalProbe", BoxLavaNormalProbe.IsChecked == true ? 1 : 0);
             foreach (var res in resArray)
                 if (((RadioButton)FindName("ProbeRes_" + res)).IsChecked.Value)
                     key.SetValue("CustomProbeRes", res);
@@ -560,11 +510,6 @@ namespace LevelPost
         private void TexPointPx_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             e.Handled = e.Text.CompareTo("0") >= 0 && e.Text.CompareTo("9") <= 0;
-        }
-
-        private void DefaultProbes_Menu_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateAll();
         }
     }
 }
