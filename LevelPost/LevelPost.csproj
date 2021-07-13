@@ -63,6 +63,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="BundleFiles.cs" />
+    <Compile Include="LevelDump.cs" />
     <Compile Include="rdbundle\BundleFile.cs" />
     <Compile Include="rdbundle\EndianStream.cs" />
     <Compile Include="rdbundle\Lz4DecoderStream.cs" />

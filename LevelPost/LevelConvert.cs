@@ -26,21 +26,28 @@ namespace LevelPost
         public int changedProbes;
     }
 
+    class ConvertBundle
+    {
+        public string Dir;
+        public string OS;
+        public string Name;
+        public Dictionary<string, string> Materials;
+        public HashSet<string> GameObjects;
+        public string BundleName { get { return Path.Combine(Dir, OS, Name); } }
+    }
+
     class ConvertSettings
     {
-        public bool verbose;
+        //public bool verbose;
         public List<string> texDirs;
         public List<string> ignoreTexDirs;
-        public string bundleDir;
-        public string bundleName;
         //public string bundlePrefix;
         public int texPointPx;
-        public Dictionary<string, string> bundleMaterials;
-        public HashSet<string> bundleGameObjects;
         public bool defaultProbeRemove;
         public bool defaultProbeHide;
         public bool boxLavaNormalProbe;
         public int probeRes;
+        public List<ConvertBundle> bundles = new List<ConvertBundle>();
     }
 
     interface ILevelMod
@@ -92,8 +99,8 @@ namespace LevelPost
             if (ignore.IsMatch(texName))
             {
                 stats.builtInTextures++;
-                if (settings.verbose)
-                    log("Ignored texture " + texName);
+                //if (settings.verbose)
+                //    log("Ignored texture " + texName);
             }
             else
             {
@@ -273,7 +280,7 @@ namespace LevelPost
 
     class BunRef
     {
-        private Guid bundle;
+        private Dictionary<ConvertBundle, Guid> bundleIds = new Dictionary<ConvertBundle, Guid>();
         private ConvertSettings settings;
         public Action<string> log;
 
@@ -282,14 +289,41 @@ namespace LevelPost
             this.settings = settings;
         }
 
-        public Guid GetGuid(List<object[]> newCmds)
+        public bool TryGetMaterial(string name, out string newName, out ConvertBundle bundle)
+        {
+            foreach (var bun in settings.bundles)
+                if (bun.Materials.TryGetValue(name, out newName))
+                {
+                    bundle = bun;
+                    return true;
+                }
+            newName = null;
+            bundle = null;
+            return false;
+        }
+
+        public bool TryGetGameObject(string name, out ConvertBundle bundle)
+        {
+            foreach (var bun in settings.bundles)
+                if (bun.GameObjects.Contains(name))
+                {
+                    bundle = bun;
+                    return true;
+                }
+            bundle = null;
+            return false;
+        }
+
+        public Guid GetGuid(ConvertBundle bun, List<object[]> newCmds)
         {
             // Load material from asset bundle
-            if (bundle == Guid.Empty) {
-                bundle = Guid.NewGuid();
-                newCmds.Add(new object[]{VT.CmdLoadAssetBundle, settings.bundleDir, settings.bundleName, bundle });
+            if (!bundleIds.TryGetValue(bun, out Guid id))
+            {
+                id = Guid.NewGuid();
+                bundleIds.Add(bun, id);
+                newCmds.Add(new object[]{VT.CmdLoadAssetBundle, bun.Dir, bun.Name, id });
             }
-            return bundle;
+            return id;
         }
     }
 
@@ -343,9 +377,9 @@ namespace LevelPost
                     wasCT = true;
                     texName = texName.Substring(5);
                 }
-                if (settings.bundleMaterials.TryGetValue(texName.ToLowerInvariant(), out string matName))
+                if (bunRef.TryGetMaterial(texName.ToLowerInvariant(), out string matName, out ConvertBundle bun))
                 {
-                    newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, matName + ".mat", bunRef.GetGuid(newCmds), matGuid});
+                    newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, matName + ".mat", bunRef.GetGuid(bun, newCmds), matGuid});
 
                     if (wasCT)
                         matRemoveCT.Add(matGuid);
@@ -375,12 +409,12 @@ namespace LevelPost
         public BunRef bunRef;
         private readonly Dictionary<Guid, int> objIdx = new Dictionary<Guid, int>();
         private readonly Dictionary<Guid, string> prefabNames = new Dictionary<Guid, string>();
-        private readonly Dictionary<string, Guid> newPrefabIds = new Dictionary<string, Guid>();
-        private readonly Dictionary<string, string> prefabConvNames = new Dictionary<string, string>()
+        private readonly Dictionary<string, Guid> newPrefabIds = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> prefabConvNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             { { "entity_PROP_N0000_MINE", "entity_mine" } };
         private readonly HashSet<Guid> convObj = new HashSet<Guid>();
         private readonly HashSet<Guid> convComp = new HashSet<Guid>();
-        private readonly HashSet<string> unconvPrefabs= new HashSet<string>();
+        private readonly HashSet<string> unconvPrefabs= new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
         {
@@ -406,7 +440,8 @@ namespace LevelPost
             {
                 var prefabName = (string)cmd[1];
                 var prefabId = (Guid)cmd[2];
-                if (prefabConvNames.ContainsKey(prefabName)) // we'll likely load this from bundle, don't use find prefab
+                // if true we'll likely load this from bundle, don't use find prefab
+                if (prefabConvNames.ContainsKey(prefabName) || bunRef.TryGetGameObject(prefabName, out ConvertBundle bun)) //  + "_new"
                 {
                     prefabNames.Add(prefabId, prefabName);
                     return true;
@@ -418,10 +453,11 @@ namespace LevelPost
                 {
                     int idx = 0;
                     objIdx.TryGetValue(objId, out idx);
-                    string newPrefabName = prefabConvNames[prefabName] + "_" + idx;
-                    if (!settings.bundleGameObjects.Contains(newPrefabName))
+                    bool addIdx = prefabConvNames.TryGetValue(prefabName, out var newPre);
+                    string newPrefabName = addIdx ? newPre + "_" + idx : prefabName; // + "_new";
+                    if (!bunRef.TryGetGameObject(newPrefabName, out ConvertBundle bun))
                     {
-                        log("Ignored entity " + prefabName + " index " + idx + ", " + newPrefabName + " is not in bundle.");
+                        log("Ignored entity " + prefabName + " index " + idx + ", " + newPrefabName + " is not in any bundle.");
                         if (!unconvPrefabs.Contains(prefabName)) { // can't load, do use find prefab after all
                             unconvPrefabs.Add(prefabName);
                             newCmds.Add(new object[] { VT.CmdFindPrefabReference, prefabName, prefabId });
@@ -432,12 +468,13 @@ namespace LevelPost
                     {
                         newPrefabId = Guid.NewGuid();
                         newPrefabIds.Add(newPrefabName, newPrefabId);
-                        newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, newPrefabName, bunRef.GetGuid(newCmds), newPrefabId });
+                        newCmds.Add(new object[] { VT.CmdLoadAssetFromAssetBundle, newPrefabName, bunRef.GetGuid(bun, newCmds), newPrefabId });
                     }
                     newCmds.Add(new object[] { cmd[0], newPrefabId, cmd[2], cmd[3] }); // instantiate new prefab
-                    log("Converted bundle entity " + prefabName + " index " + idx + " to " + newPrefabName);
+                    log("Converted bundle entity " + prefabName + (newPre == null ? "" : " index " + idx) + " to " + newPrefabName);
                     stats.convertedEntities++;
-                    convObj.Add(objId);
+                    if (addIdx) // when converting same-name entity components already exist
+                        convObj.Add(objId);
                     return true;
                 }
             /*
@@ -476,12 +513,7 @@ namespace LevelPost
         private readonly Dictionary<Guid, int> objRptDelay = new Dictionary<Guid, int>();
         private readonly Dictionary<Guid, int> objImportance = new Dictionary<Guid, int>();
         private readonly Dictionary<Guid, string> prefabNames = new Dictionary<Guid, string>();
-        private readonly Dictionary<string, Guid> newPrefabIds = new Dictionary<string, Guid>();
-        private readonly Dictionary<string, string> prefabConvNames = new Dictionary<string, string>()
-            { { "entity_PROP_N0000_MINE", "entity_mine" } };
         private readonly HashSet<Guid> RemoveObj = new HashSet<Guid>();
-        private readonly HashSet<Guid> convComp = new HashSet<Guid>();
-        private readonly HashSet<string> unconvPrefabs = new HashSet<string>();
         private readonly Dictionary<Guid, Guid> compObj = new Dictionary<Guid, Guid>();
 
         public bool Init(string levelFilename, ConvertSettings settings, Action<string> log, ConvertStats stats, List<object[]> cmds)
@@ -796,13 +828,13 @@ namespace LevelPost
 
             var mods = new List<ILevelMod>();
 
-            if (settings.bundleName != null && settings.bundleName != "")
+            if (settings.bundles.Any())
             {
                 var bufRef = new BunRef() { log = log };
                 bufRef.Init(settings);
-                if (settings.bundleMaterials != null)
+                if (settings.bundles.Any(bun => bun.Materials.Any()))
                     mods.Add(new BunTexMod() { bunRef = bufRef });
-                if (settings.bundleGameObjects != null)
+                if (settings.bundles.Any(bun => bun.GameObjects.Any()))
                     mods.Add(new EntityReplaceMod() { bunRef = bufRef });
             }
 

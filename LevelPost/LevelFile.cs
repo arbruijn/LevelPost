@@ -131,9 +131,28 @@ namespace LevelPost
     {
         private static readonly Dictionary<VT, string[]> fieldNames = new Dictionary<VT, string[]>
         {
+            { VT.SegmentLightInfo, new [] { "lightType", "segIdx" } },
+            { VT.SegmentReflectionProbeInfo, new [] { "probeType", "segIdx" } },
+            { VT.LevelData__PortalDoorConnection, new [] { "portalIdx" } },
+            { VT.LevelData__SpawnPoint, new [] { "pos", "orient", "seg", "team_mask" } },
+            { VT.PortalPolygonData, new [] { "normal", "planeEqD", "vertIdxs" } },
+            { VT.PortalData, new [] { "primSeg", "primSide", "secSeg", "secSide", "polygons" } },
+            { VT.SegmentData, new [] { "vertIdxs", "center", "minPos", "maxPos", "sidePlaneEq", "portals", "chunkIdx", "decalFlags", "doorFlags", "dark", "pathfinding", "exitSeg", "deformHeights", "warpDestSegs" } },
+            { VT.BSPTreeNode, new [] { "plantEq", "backNodeIdx", "frontNodeIdx" } },
+            { VT.AABB, new [] { "min", "max" } },
+            { VT.AABBTreeNode, new [] { "bounds", "minChild", "maxChild", "seg" } },
+            { VT.ChunkData, new [] { "portalIdxs", "segIdxs", "isEnergy" } },
+            { VT.ChunkPortal, new [] { "num", "chunk", "seg", "side", "connectedChunk", "connectedPortal", "portalGeom" } },
+            { VT.PortalGeomTriangle, new [] { "firstVertIdx" } },
+            { VT.PortalGeomData, new [] { "numTri", "startIdx" } },
+            { VT.PathDistanceData, new [] { "dist", "pathLen", "secSeg", "secLastSeg" } },
+            { VT.LevelGeometry, new [] { "name", "file", "segments", "portals", "segVerts", "segBSPIdx", "segBSPData", "segAABBTree", "chunks", "chunkPortals", "portalVerts", "portalTris", "portalData", "cmText", "segSegVis", "pathDist", "geomHash", "robotSpawnHash" } },
+
+            { VT.Mesh, new [] { "name", "verts", "uv", "uv2", "uv3", "norms", "tangs", "colors", "colors32", "boneWeights", "bindposes", "tris" } },
+
             { VT.CmdCreateAssetFile, new string[] { "path", "newFileId" } }, // does nothing
             { VT.CmdAddAssetToAssetFile, new string[] { "fileId", "newAssetId", "type" }},
-            { VT.CmdInitializeGameManager, new string[] { "name", "newInitId" } },
+            { VT.CmdInitializeGameManager, new string[] { "name", "levelDataId" } },
             { VT.CmdCreateGameObject, new string[] { "newObjId", "newTransId" } },
             { VT.CmdTransformSetParent, new string[] { "transId", "parentTransId" } },
             { VT.CmdGameObjectSetName, new string[] { "objId", "name" } },
@@ -654,11 +673,9 @@ namespace LevelPost
                 WriteBytes(s, BitConverter.GetBytes(a[i]));
         }
 
-        public static string FmtCmd(object[] cmd)
+        static string FmtFields(object[] cmd)
         {
-            if ((VT)cmd[0] == VT.CmdDone) // otherwise CmdFlag
-                return "CmdDone";
-            string s = String.Format("{0} ", cmd[0]);
+            string s = "";
             LevelFile.fieldNames.TryGetValue((VT)cmd[0], out string[] fieldNames);
             for (int l = cmd.Length, i = 1; i < l; i++) {
                 if (fieldNames != null)
@@ -669,15 +686,30 @@ namespace LevelPost
                     if (v is VT vt)
                         if (vt == VT.Enum)
                             v = String.Format("({1}){0}", va[1], va[2]);
+                        else if (vt == VT.Vector2)
+                            v = String.Format("[{0}, {1}]", va[1], va[2]);
                         else if (vt == VT.Vector3 || vt == VT.Vector3b)
                             v = String.Format("[{0}, {1}, {2}]", va[1], va[2], va[3]);
-                        else if (vt == VT.Quaternion)
+                        else if (vt == VT.Quaternion || vt == VT.Vector4 || vt == VT.Color)
                             v = String.Format("[{0}, {1}, {2}, {3}]", va[1], va[2], va[3], va[4]);
+                        else if (vt.HasFlag(VT.ArrayFlag))
+                            v = (vt == VT.IntArrayArray ? "IntArray" : (vt & ~VT.ArrayFlag).ToString()) +
+                                "[" + (va.Length - 1) + "]";
                 } else if (v is Vector3 v3) {
                     v = String.Format("[{0}, {1}, {2}]", v3.x, v3.y, v3.z);
                 }
                 s += String.Format(i + 1 == l ? "{0}" : "{0}, ", v);
             }
+            return s;
+        }
+
+        public static string FmtCmd(object[] cmd)
+        {
+            if ((VT)cmd[0] == VT.CmdDone) // otherwise CmdFlag
+                return "CmdDone";
+            string s = cmd[0] + " " + FmtFields(cmd);
+            if ((VT)cmd[0] == VT.CmdSaveAsset)
+                s += "\n " + FmtFields(cmd[2] as object[]);
             return s;
         }
 
