@@ -146,6 +146,7 @@ namespace LevelPost
             UpdateWatcher();
             UpdateSettings();
             DumpBtn.Visibility = DebugOptions.IsChecked == true ? Visibility.Visible : Visibility.Hidden;
+            SaveObjBtn.Visibility = DebugOptions.IsChecked == true ? Visibility.Visible : Visibility.Hidden;
             updating = false;
         }
 
@@ -697,6 +698,32 @@ namespace LevelPost
         {
             TextChanged(sender, e);
             BundlesScan(BundlesGet(), false, false);
+        }
+
+        private void SaveObjBtn_Click(object sender, RoutedEventArgs e)
+        {
+            string filename = LvlFile.Text;
+            SaveObjBtn.IsEnabled = false;
+            new Task(() => {
+                var outName = Path.ChangeExtension(filename, "obj");
+                AddMessage(null);
+                AddMessage("Exporting level mesh from " + filename + " to " + outName);
+                try
+                {
+                    LevelSaveObj.SaveObj(filename, outName, AddMessage);
+                }
+                catch (Exception ex)
+                {
+                    AddMessage("Exporting failed: " + ex.Message);
+                    Dispatcher.Invoke(() => { SaveObjBtn.IsEnabled = true; });
+                    return;
+                }
+                Dispatcher.Invoke(() =>
+                {
+                    SaveObjBtn.IsEnabled = true;
+                    AddMessage("Exporting level mesh done");
+                });
+            }).Start();
         }
 
         private void TexPointPx_PreviewTextInput(object sender, TextCompositionEventArgs e)

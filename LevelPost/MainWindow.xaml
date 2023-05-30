@@ -22,6 +22,7 @@
                     <Button x:Name="ConvertBtn" Grid.ColumnSpan="2" Content="Convert" HorizontalAlignment="Left" Margin="11,62,0,0" VerticalAlignment="Top" Width="75" Click="ConvertBtn_Click" RenderTransformOrigin="0.493,2.3" TabIndex="7"/>
                     <CheckBox x:Name="AutoConvert" Content="Auto convert on change" Grid.Column="1" HorizontalAlignment="Left" Margin="76,41,0,0" VerticalAlignment="Top" Width="576" Click="AutoConvert_Click" TabIndex="6"/>
                     <Button x:Name="DumpBtn" Content="Dump" HorizontalAlignment="Left" Margin="37,62,0,0" VerticalAlignment="Top" Width="75" Click="DumpBtn_Click" RenderTransformOrigin="0.493,2.3" TabIndex="7" Grid.Column="1" ToolTip="Dump level structure to new window"/>
+                    <Button x:Name="SaveObjBtn" Content="Export Mesh" HorizontalAlignment="Left" Margin="127,62,0,0" VerticalAlignment="Top" Width="75" Click="SaveObjBtn_Click" RenderTransformOrigin="0.493,2.3" TabIndex="7" Grid.Column="1" ToolTip="Export level mesh to .obj file"/>
                 </Grid>
             </TabItem>
             <TabItem Header="Bundle" TabIndex="2">
