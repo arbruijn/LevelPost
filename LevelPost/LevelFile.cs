@@ -693,8 +693,11 @@ namespace LevelPost
                         else if (vt == VT.Quaternion || vt == VT.Vector4 || vt == VT.Color)
                             v = String.Format("[{0}, {1}, {2}, {3}]", va[1], va[2], va[3], va[4]);
                         else if (vt.HasFlag(VT.ArrayFlag))
-                            v = (vt == VT.IntArrayArray ? "IntArray" : (vt & ~VT.ArrayFlag).ToString()) +
-                                "[" + (va.Length - 1) + "]";
+                            if (vt == VT.IntArrayArray && va.Length == 2)
+                                v = "IntArray[1][" + (((object[])va[1]).Length - 1) + "]";
+                            else
+                                v = (vt == VT.IntArrayArray ? "IntArray" : (vt & ~VT.ArrayFlag).ToString()) +
+                                    "[" + (va.Length - 1) + "]";
                 } else if (v is Vector3 v3) {
                     v = String.Format("[{0}, {1}, {2}]", v3.x, v3.y, v3.z);
                 }
